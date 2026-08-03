@@ -45,7 +45,6 @@ const KNOWN_NON_MEMBER_TREES: &[&str] = &[
     "scirust-chronos-agent",
     "scirust-cuda",
     "scirust-gpu",
-    "scirust-gpu-macros",
     "scirust-license",
     "scirust-multivariate",
     "scirust-solvers",

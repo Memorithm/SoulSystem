@@ -64,20 +64,17 @@ impl ClinicalStreamingServer {
                     );
                     let _ = socket.write_all(http_response.as_bytes()).await;
                 } else if request.starts_with("GET /metrics") {
-                    // Endpoint /metrics : stream binaire des TelemetryFrames
+                    // Endpoint /metrics : flux JSON des TelemetryFrames
                     loop {
                         let frame = auditor.get_latest();
-                        // SAFETY: TelemetryFrame est un struct sans pointeurs internes
-                        // et sans padding significatif. La conversion en bytes est utilisée
-                        // pour un streaming binaire sur le réseau local uniquement.
-                        // TODO: remplacer par serde + bincode pour un format plus sûr.
-                        let bytes = unsafe {
-                            std::slice::from_raw_parts(
-                                &frame as *const _ as *const u8,
-                                std::mem::size_of::<neural_metacognition::TelemetryFrame>(),
-                            )
-                        };
-                        if socket.write_all(bytes).await.is_err() {
+                        let body = format!(
+                            "{{\"timestamp_ns\":{},\"memory_throughput_bytes_per_sec\":{},\"active_synapse_count\":{},\"current_meta_loss\":{}}}",
+                            frame.timestamp_ns,
+                            frame.memory_throughput_bytes_per_sec,
+                            frame.active_synapse_count,
+                            frame.current_meta_loss
+                        );
+                        if socket.write_all(body.as_bytes()).await.is_err() {
                             break;
                         }
                         tokio::time::sleep(std::time::Duration::from_millis(16)).await;

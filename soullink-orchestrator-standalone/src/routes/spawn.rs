@@ -143,8 +143,7 @@ pub async fn route_spawn(State(state): State<AppState>, Json(body): Json<Value>)
 
     let brain_dir = state.brain_dir.clone();
     let domain_c = domain.clone();
-    // TODO: transmettre la speciality au brain lancé (ignorée pour le moment).
-    let _speciality = body
+    let speciality: Vec<String> = body
         .get("speciality")
         .and_then(|v| v.as_array())
         .map(|arr| {
@@ -157,10 +156,15 @@ pub async fn route_spawn(State(state): State<AppState>, Json(body): Json<Value>)
     // `python3` and the script path are chosen here, so they are `flag`.
     // `domain_c` arrived in the request body, so it is `value` and
     // `spawn_supervised` refuses it if it looks like a flag.
-    let spec = SpawnSpec::new("python3")
+    let mut spec = SpawnSpec::new("python3")
         .flag(format!("{}/brain_v12.py", brain_dir))
         .flag("--brain")
         .value(&domain_c);
+
+    // Transmettre la speciality au brain lancé.
+    for s in &speciality {
+        spec = spec.flag("--speciality").value(s);
+    }
 
     let sandbox = Sandbox::new(brain_policy());
 

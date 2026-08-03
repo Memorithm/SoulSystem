@@ -35,7 +35,6 @@ jobs:
       - name: Check GPU/CUDA crates
         run: |
           cargo check --manifest-path scirust-gpu/Cargo.toml --all-targets
-          cargo check --manifest-path scirust-gpu-macros/Cargo.toml --all-targets
           cargo check --manifest-path soullink-brain/soullink-cutlass/Cargo.toml --all-targets
           cargo check --manifest-path soullink-brain/soullink-dali/Cargo.toml --all-targets
           cargo check --manifest-path soullink-brain/soullink-onednn/Cargo.toml --all-targets
@@ -80,7 +79,6 @@ jobs:
       - name: Clippy GPU/CUDA crates
         run: |
           cargo clippy --manifest-path scirust-gpu/Cargo.toml --all-targets -- -D warnings
-          cargo clippy --manifest-path scirust-gpu-macros/Cargo.toml --all-targets -- -D warnings
           cargo clippy --manifest-path soullink-brain/soullink-cutlass/Cargo.toml --all-targets -- -D warnings
           cargo clippy --manifest-path soullink-brain/soullink-dali/Cargo.toml --all-targets -- -D warnings
           cargo clippy --manifest-path soullink-brain/soullink-onednn/Cargo.toml --all-targets -- -D warnings

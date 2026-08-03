@@ -190,7 +190,6 @@ const SIMULATED_FEATURES: &[(&str, &str)] = &[
     ("LOW-006", "--plan, keyword matching presented as planning"),
     ("LOW-008", "soul_llm silently flattened tools to text"),
     ("MED-010", "soul-wasm placeholder WASI host functions"),
-    ("LOW-004", "scirust-gpu-macros #[gpu] attribute"),
 ];
 
 fn decision_doc() -> String {

@@ -1,8 +1,0 @@
-[package]
-name = "soul-quant"
-version.workspace = true
-edition.workspace = true
-description = "Quantization-aware training (INT8/INT4/NF4)"
-
-[dependencies]
-scirust-gpu = { workspace = true }

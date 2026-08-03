@@ -17,9 +17,6 @@ members = [
     "scirust-simd",
     "scirust-autodiff",
     "scirust-simd-macros",
-    # scirust-gpu-macros moved to the dedicated ./workspaces/gpu workspace
-    # (see exclude below). It remains a cross-workspace path dependency of
-    # scirust-core, which is allowed; it must not be a member of both.
     "scirust-macros",
     "scirust-symbolic",
     "scirust-learning",
@@ -237,9 +234,8 @@ exclude = [
     "turbovec",
     # GPU/CUDA crates are standalone manifests validated individually by CI.
     # Keeping them out of the root workspace avoids the 7 GB runner OOM while
-    # preserving path dependencies such as scirust-core -> scirust-gpu-macros.
+    # preserving path dependencies such as scirust-core -> scirust-gpu.
     "scirust-gpu",
-    "scirust-gpu-macros",
     "soullink-brain/soullink-cutlass",
     "soullink-brain/soullink-dali",
     "soullink-brain/soullink-onednn",

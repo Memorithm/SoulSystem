@@ -12,7 +12,6 @@ members = [
     "crates/soul-minillm",
     "crates/soul-monitor",
     "crates/soul-pattern-miner",
-    "crates/soul-quant",
     "crates/soul-rstdp",
     "crates/soul-symbolic",
     "crates/soul-tools",
@@ -38,3 +37,5 @@ description = "Neural engine: HNN, embeddings, MiniLLM, symbolic reasoning, R-ST
 scirust-autodiff = { path = "../scirust-autodiff" }
 scirust-core = { path = "../scirust-core" }
 scirust-gpu = { path = "../scirust-gpu" }
+serde = { version = "1", features = ["derive"] }
+tokio = { version = "1.36", features = ["rt-multi-thread", "macros", "time", "process", "fs", "sync", "signal", "net", "io-util", "io-std"] }

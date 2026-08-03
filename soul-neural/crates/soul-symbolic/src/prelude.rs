@@ -9,4 +9,3 @@ pub use crate::symbolic::{
 };
 pub use crate::Dual;
 pub use crate::ops::{add_f32, mul_f32, add_f64, mul_f64};
-pub use crate::dispatch::gpu_or_cpu;

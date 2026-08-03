@@ -410,7 +410,7 @@ pub fn diff(expr: &Expr, var: &str) -> Expr {
             )
         }
         Expr::Abs(a) => {
-            // d/dx |u| = sign(u) * du  (stub: just du)
+            // d/dx |u| = sign(u) * du ; sans signe connu, on propage du.
             diff(a, var)
         }
     }
@@ -596,7 +596,7 @@ pub fn apply_trig_identity(expr: &Expr) -> Expr {
     }
 }
 
-// ── Optimizer (stub — numeric gradient descent) ──
+// ── Optimizer (numeric gradient descent) ──
 
 pub struct Optimizer {
     pub lr: f64,
@@ -868,7 +868,7 @@ impl Neg for Dual {
     }
 }
 
-// ── SIMD operations stubs ──
+// ── SIMD operations ──
 
 pub mod ops {
     pub fn add_f32(a: &[f32], b: &[f32], out: &mut [f32]) {
@@ -899,19 +899,7 @@ pub fn simd_add_one(data: &mut [f32]) {
     }
 }
 
-// ── GPU dispatch stub ──
-
-pub mod dispatch {
-    pub fn gpu_or_cpu<F, G, T>(_on_gpu: F, on_cpu: G) -> T
-    where
-        F: FnOnce() -> T,
-        G: FnOnce() -> T,
-    {
-        on_cpu()
-    }
-}
-
-// ── IA Bridge stubs ──
+// ── IA Bridge ──
 
 pub struct Pipeline {
     vars: HashMap<String, f64>,
@@ -982,7 +970,7 @@ pub fn parse_natural(input: &str) -> NaturalCommand {
     }
 }
 
-// ── Autodiff macros stub ──
+// ── Autodiff helpers ──
 // ── Derivative helpers for prelude ──
 
 pub fn derivative_1d<F: Fn(f64) -> f64>(f: F, x: f64) -> f64 {

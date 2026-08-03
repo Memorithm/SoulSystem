@@ -147,20 +147,12 @@ depended on it, which is what the decision rested on.
 | Claims | Dispatches a function to the GPU |
 | Actually does | Parses the signature looking for `&mut [f32]`; never applied anywhere |
 | Reachable | **No** |
-| **Decision** | **Keep the crate, delete nothing yet** — see below |
-| Decided by | repository owner, 2026-07-30 (adopted the recommendation as written) |
+| **Decision** | **Delete** | DONE — crate removed; `#[gpu]` was never applied anywhere |
+| Decided by | repository owner, 2026-07-30 (adopted the recommendation as written); deleted 2026-08-03 (stub policy) |
 
-This one is **not** the clean deletion it first appears to be, and the
-difference matters.
-
-- `scirust-gpu-macros` is in the root workspace's **`exclude`** list
-  *deliberately*, with a written reason: GPU/CUDA crates are validated by
-  separate manifests to avoid a 7 GB runner OOM.
-- `#[gpu]` is applied **nowhere** in the repository.
-- The macro is not a stub — it contains real signature-parsing logic.
-
-**But the search turned up a separate, larger problem.** The only in-repo
-dependent, `soullink-node/scirust/scirust-core/Cargo.toml`, declares **seven**
+`#[gpu]` was applied **nowhere** in the repository, and the crate was not in
+`Cargo.lock` (never built by the root workspace). The only in-repo dependent,
+`soullink-node/scirust/scirust-core/Cargo.toml`, declares **seven** absolute
 path dependencies pointing at `/root/scirust/…`:
 
 ```
@@ -176,10 +168,10 @@ scirust-gpu-macros = { path = "/root/scirust/scirust-gpu-macros" }
 to a directory outside the repository, so that crate cannot build on any
 machine — and `soullink-node` is in `exclude`, so CI never tries.
 
-That is not a simulated feature; it is a dead tree with a broken manifest,
-and it belongs to MED-017 (the non-member surface). Deleting
-`scirust-gpu-macros` while `scirust-core` still names it would swap one broken
-reference for another. **Fix the tree first, then revisit this entry.**
+The `#[gpu]` attribute was a placeholder that parsed the signature for
+`&mut [f32]` but never dispatched anything. Deleted 2026-08-03 under the
+no-stubs policy, along with its references in `Cargo.toml`, `.github/workflows/
+ci.yml`, and the architecture guard allowlists.
 
 ---
 
@@ -192,7 +184,7 @@ reference for another. **Fix the tree first, then revisit this entry.**
 | LOW-006 | finish | **re-estimated**: needs a new LLM dependency and a decomposition design; not the cheap one |
 | LOW-008 | finish | now the cheapest — integration against two documented APIs |
 | MED-010 | **delete** | DONE — crate and manifest line removed together |
-| LOW-004 | defer | blocked on MED-017 — fix `soullink-node/scirust` first |
+| LOW-004 | **delete** | DONE — crate and references removed together |
 
 The three "finish" items are scheduled work, not blockers: each is neutralised
 today, so nothing reports a false success while they wait.
