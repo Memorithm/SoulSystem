@@ -94,6 +94,7 @@ members = [
     "soul-intrinsic-motivation",
     "soul-goaltree",
     "soul-automodify",
+    "soul-rsi",
     "soul-protocol",
     "soul-mcp",
     "soul-browser",

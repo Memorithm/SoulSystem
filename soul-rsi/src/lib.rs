@@ -68,6 +68,7 @@ mod engine;
 mod error;
 mod evaluator;
 mod llm;
+pub mod meta_neuro_symbolic;
 mod rng;
 mod snapshot;
 mod traits;

@@ -61,7 +61,6 @@ const KNOWN_NON_MEMBER_TREES: &[&str] = &[
     "soul-cognition",
     "soul-neural",
     "soul-project",
-    "soul-rsi",
     "soul-scheduler",
     "soullink-brain",
     "soullink-node",

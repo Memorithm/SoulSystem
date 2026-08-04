@@ -10156,6 +10156,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "soul_rsi"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "serde",
+ "serde_json",
+ "soul_automodify",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
 name = "soul_sandbox"
 version = "0.2.0"
 dependencies = [

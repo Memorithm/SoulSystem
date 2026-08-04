@@ -3,6 +3,7 @@ name = "soul_rsi"
 version = "0.1.0"
 edition = "2021"
 description = "Recursive self-improvement loop — Darwin-Gödel-Machine / STOP-style: propose a code change, evaluate it in an isolated build+test sandbox, keep it only if it provably improves, archive the variant, repeat."
+license = "PolyForm-Noncommercial-1.0.0"
 
 [dependencies]
 serde = { workspace = true, features = ["derive"] }
@@ -19,4 +20,3 @@ tempfile = "3"
 
 [lints]
 workspace = true
-license = "PolyForm-Noncommercial-1.0.0"

@@ -16,7 +16,7 @@
 //!
 //! **What is deliberately out of scope.** Directories that are not workspace
 //! members — `intel-integrations/soulsystem-integration`, `openevolve`, `backlog`,
-//! `soul-rsi`, `jit-agentic-engine`,
+//! `jit-agentic-engine`,
 //! `soullink-node`, `turboquant`, `scirust-chronos-agent` — carry a further 112
 //! spawn sites. They are not built by `cargo build --workspace`, so this guard
 //! says nothing about them, and neither should anyone reading it. Claiming
@@ -183,6 +183,13 @@ const ALLOWED: &[(&str, Category, &str)] = &[
         Category::DevTooling,
         "`cargo` build/test to validate a self-modification before it is \
          applied. Host-level by design: the point is to compile the real tree.",
+    ),
+    (
+        "soul-rsi/src/evaluator.rs",
+        Category::DevTooling,
+        "`cargo` build/test on a throwaway workspace snapshot to score a \
+         proposed code change (the RSI empirical gate). Host-level by design: \
+         the point is to compile the real tree in isolation.",
     ),
     (
         "soul_evolution/src/optimizer.rs",
