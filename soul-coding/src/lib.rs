@@ -12,6 +12,7 @@ pub mod command;
 pub mod contract;
 pub mod feedback;
 pub mod git;
+pub mod mcp;
 pub mod runner;
 pub mod runtime;
 pub mod session;
