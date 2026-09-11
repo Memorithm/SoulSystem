@@ -26,3 +26,9 @@ Required CI must be green on the exact PR head before merge.
 Reread the roadmap at every session start, before coding-harness/security/session changes, before ecosystem integration, after strategy changes, and before relevant PR/merge decisions.
 
 Do not merge the roadmap itself into `main` unless the user explicitly requests it.
+
+## V0-1 vendor freeze (2026-09-12)
+
+Also read `VENDOR_POLICY.md` and `CODEOWNERS` before any edit under `ccos/`, `octasoma/`, `slha-kernel/`, `scirust-*`, `forges/`, or `turboquant/`.
+
+Fail closed: do not add features inside those trees. Do not merge a vendor of a sibling monorepo. Replace copies with git SHA pins. Host work stays in `soul-*` / `soullink-*` / `soulsystem-*`.
