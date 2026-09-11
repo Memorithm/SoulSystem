@@ -1,0 +1,11 @@
+# V0-1 vendor freeze. Changes under canon copies require explicit review.
+* @CHECKUPAUTO
+/ccos/ @CHECKUPAUTO
+/octasoma/ @CHECKUPAUTO
+/slha-kernel/ @CHECKUPAUTO
+/scirust-core/ @CHECKUPAUTO
+/scirust-simd/ @CHECKUPAUTO
+/scirust-autodiff/ @CHECKUPAUTO
+/scirust-gpu/ @CHECKUPAUTO
+/forges/ @CHECKUPAUTO
+/turboquant/ @CHECKUPAUTO
