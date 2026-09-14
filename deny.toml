@@ -114,7 +114,7 @@ name = "malachite-q"
 # the permissive workspace default. Keep these exceptions package-scoped so
 # neither license is silently accepted for third-party dependencies.
 [[licenses.exceptions]]
-allow = ["LicenseRef-CheckupAuto-Dual"]
+allow = ["PolyForm-Noncommercial-1.0.0"]
 name = "ccos-memory-runtime"
 
 [[licenses.exceptions]]
