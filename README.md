@@ -125,7 +125,7 @@ path, provider setup, security defaults, and troubleshooting.
 The repository-level source-of-truth licensing files are [`LICENSE.md`](LICENSE.md)
 and [`LICENSING.md`](LICENSING.md): SoulSystem is available for noncommercial use
 under the PolyForm Noncommercial License 1.0.0, with separate commercial licensing.
-The Required Notice is `Copyright 2026 Tarek Zekriti`.
+The Required Notice is `Copyright 2026 Tarek Zekriti (https://github.com/CHECKUPAUTO/)`.
 
 This README correction does not by itself change historical license grants or the
 independent licensing/provenance of imported, adapted, vendored, or generated
