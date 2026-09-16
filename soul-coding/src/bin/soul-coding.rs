@@ -8,14 +8,14 @@
 
 use clap::{Parser, ValueEnum};
 use soul_coding::{
-    CheckSpec, CodingAgent, CodingAgentEvent, GitWorkspace, SessionStore, TaskResult, TaskSpec,
-    TaskStatus,
+    CheckSpec, CodingAgent, CodingAgentEvent, CodingTaskEnvelopeV1, GitWorkspace, SessionStore,
+    TaskResult, TaskSpec, TaskStatus,
 };
 use soul_llm::{LlmClient, LlmConfig, ProviderKind};
 use soul_sandbox::SandboxPolicy;
 use soullink_gate::ExecutionMode;
 use soulsystem_common::secrets::SecretString;
-use std::path::PathBuf;
+use std::{fs, path::PathBuf};
 use tokio::sync::mpsc;
 
 #[derive(Debug, Parser)]
@@ -35,6 +35,11 @@ struct Args {
     /// Natural-language coding task.
     #[arg(long)]
     prompt: Option<String>,
+
+    /// Versioned provider-neutral task envelope (`soulsystem.coding-task/v1`).
+    /// Mutually exclusive with `--prompt` and `--check` for new sessions.
+    #[arg(long, value_name = "FILE")]
+    task_json: Option<PathBuf>,
 
     /// Required shell-free acceptance check, repeated as NAME=COMMAND.
     /// Commands are whitespace-separated argv; shell pipes and separators are
@@ -97,6 +102,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     let store = SessionStore::new(&args.repo)?;
     let (task, workspace) = if args.resume {
+        if args.prompt.is_some() || args.task_json.is_some() || !args.checks.is_empty() {
+            return Err("--resume cannot be combined with --prompt, --task-json, or --check".into());
+        }
         let session_id = args
             .session_id
             .as_deref()
@@ -112,19 +120,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         )?;
         (record.task().clone(), workspace)
     } else {
-        let prompt = args.prompt.ok_or("a new session requires --prompt")?;
-        let checks = args
-            .checks
-            .iter()
-            .map(|raw| parse_check(raw))
-            .collect::<Result<Vec<_>, _>>()?;
-        let task = TaskSpec::new(prompt, checks)?;
+        let task = load_new_task(&args)?;
         let session_id = args
             .session_id
+            .clone()
             .unwrap_or_else(|| format!("session-{}", uuid::Uuid::new_v4()));
         let workspace = GitWorkspace::create(
             &args.repo,
-            args.base_revision,
+            args.base_revision.clone(),
             session_id,
             SandboxPolicy::default(),
         )?;
@@ -178,6 +181,27 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         std::process::exit(2);
     }
     Ok(())
+}
+
+fn load_new_task(args: &Args) -> Result<TaskSpec, Box<dyn std::error::Error>> {
+    if let Some(path) = &args.task_json {
+        if args.prompt.is_some() || !args.checks.is_empty() {
+            return Err("--task-json cannot be combined with --prompt or --check".into());
+        }
+        let payload = fs::read_to_string(path)?;
+        return Ok(CodingTaskEnvelopeV1::from_json(&payload)?.into_task_spec()?);
+    }
+
+    let prompt = args
+        .prompt
+        .clone()
+        .ok_or("a new session requires exactly one of --prompt or --task-json")?;
+    let checks = args
+        .checks
+        .iter()
+        .map(|raw| parse_check(raw))
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(TaskSpec::new(prompt, checks)?)
 }
 
 fn parse_check(raw: &str) -> Result<CheckSpec, String> {
