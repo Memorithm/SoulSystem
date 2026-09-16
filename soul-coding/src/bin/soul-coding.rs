@@ -103,7 +103,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let store = SessionStore::new(&args.repo)?;
     let (task, workspace) = if args.resume {
         if args.prompt.is_some() || args.task_json.is_some() || !args.checks.is_empty() {
-            return Err("--resume cannot be combined with --prompt, --task-json, or --check".into());
+            return Err(
+                "--resume cannot be combined with --prompt, --task-json, or --check".into(),
+            );
         }
         let session_id = args
             .session_id
