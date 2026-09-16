@@ -122,4 +122,11 @@ path, provider setup, security defaults, and troubleshooting.
 
 ## Licence
 
-MIT
+The repository-level source-of-truth licensing files are [`LICENSE.md`](LICENSE.md)
+and [`LICENSING.md`](LICENSING.md): SoulSystem is available for noncommercial use
+under the PolyForm Noncommercial License 1.0.0, with separate commercial licensing.
+The Required Notice is `Copyright 2026 Tarek Zekriti`.
+
+This README correction does not by itself change historical license grants or the
+independent licensing/provenance of imported, adapted, vendored, or generated
+material. The remaining workspace/package metadata audit is tracked separately.
