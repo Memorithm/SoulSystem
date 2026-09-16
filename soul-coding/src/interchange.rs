@@ -6,7 +6,7 @@
 //! must translate their native task format into this explicit contract.
 
 use crate::contract::ContractError;
-use crate::{CheckSpec, TaskSpec};
+use crate::{CheckSpec, CommandSpec, CommandSpecError, TaskSpec};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use thiserror::Error;
@@ -80,6 +80,7 @@ impl CodingTaskEnvelopeV1 {
                 check.required,
                 check.timeout_secs,
             )?;
+            CommandSpec::parse(&validated.command)?;
             if !names.insert(validated.name.clone()) {
                 return Err(CodingTaskInterchangeError::DuplicateCheckName(
                     validated.name,
@@ -127,6 +128,8 @@ pub enum CodingTaskInterchangeError {
     DuplicateCheckName(String),
     #[error(transparent)]
     Contract(#[from] ContractError),
+    #[error(transparent)]
+    Command(#[from] CommandSpecError),
 }
 
 #[cfg(test)]
@@ -195,6 +198,20 @@ mod tests {
             CodingTaskEnvelopeV1::from_json(&changed),
             Err(CodingTaskInterchangeError::Contract(
                 ContractError::InvalidCheckTimeout
+            ))
+        ));
+    }
+
+    #[test]
+    fn shell_syntax_is_rejected_before_runtime_task_creation() {
+        let changed = payload().replace(
+            "cargo test -p parser",
+            "cargo test -p parser && echo unexpected",
+        );
+        assert!(matches!(
+            CodingTaskEnvelopeV1::from_json(&changed),
+            Err(CodingTaskInterchangeError::Command(
+                CommandSpecError::ShellSyntax
             ))
         ));
     }
