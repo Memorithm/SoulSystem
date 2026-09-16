@@ -5,7 +5,8 @@
 //! claim protocol compatibility with any third-party coding agent: adapters
 //! must translate their native task format into this explicit contract.
 
-use crate::{CheckSpec, ContractError, TaskSpec};
+use crate::contract::ContractError;
+use crate::{CheckSpec, TaskSpec};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use thiserror::Error;
