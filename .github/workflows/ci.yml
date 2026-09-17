@@ -39,13 +39,13 @@ jobs:
         if: ${{ runner.environment == 'github-hosted' }}
         run: sudo apt-get update && sudo apt-get install -y libleptonica-dev libtesseract-dev
       - name: Check workspace (CPU-only)
-        run: cargo check --workspace --all-targets
+        run: cargo +stable check --workspace --all-targets
       - name: Check GPU/CUDA crates
         run: |
-          cargo check --manifest-path scirust-gpu/Cargo.toml --all-targets
-          cargo check --manifest-path soullink-brain/soullink-cutlass/Cargo.toml --all-targets
-          cargo check --manifest-path soullink-brain/soullink-dali/Cargo.toml --all-targets
-          cargo check --manifest-path soullink-brain/soullink-onednn/Cargo.toml --all-targets
+          cargo +stable check --manifest-path scirust-gpu/Cargo.toml --all-targets
+          cargo +stable check --manifest-path soullink-brain/soullink-cutlass/Cargo.toml --all-targets
+          cargo +stable check --manifest-path soullink-brain/soullink-dali/Cargo.toml --all-targets
+          cargo +stable check --manifest-path soullink-brain/soullink-onednn/Cargo.toml --all-targets
 
   test:
     name: Test
@@ -70,9 +70,9 @@ jobs:
         if: ${{ runner.environment == 'github-hosted' }}
         run: sudo apt-get update && sudo apt-get install -y libleptonica-dev libtesseract-dev
       - name: Test workspace (CPU-only)
-        run: cargo test --workspace --lib --exclude soulsystem --exclude soul-kernel
+        run: cargo +stable test --workspace --lib --exclude soulsystem --exclude soul-kernel
       # GPUs may be missing on some runners — skip silently
-      - run: cargo test -p soulsystem --tests -- --test-threads=2
+      - run: cargo +stable test -p soulsystem --tests -- --test-threads=2
 
   clippy:
     name: Clippy
@@ -98,13 +98,13 @@ jobs:
         if: ${{ runner.environment == 'github-hosted' }}
         run: sudo apt-get update && sudo apt-get install -y libleptonica-dev libtesseract-dev
       - name: Clippy workspace (CPU-only)
-        run: cargo clippy --workspace --all-targets -- -D warnings
+        run: cargo +stable clippy --workspace --all-targets -- -D warnings
       - name: Clippy GPU/CUDA crates
         run: |
-          cargo clippy --manifest-path scirust-gpu/Cargo.toml --all-targets -- -D warnings
-          cargo clippy --manifest-path soullink-brain/soullink-cutlass/Cargo.toml --all-targets -- -D warnings
-          cargo clippy --manifest-path soullink-brain/soullink-dali/Cargo.toml --all-targets -- -D warnings
-          cargo clippy --manifest-path soullink-brain/soullink-onednn/Cargo.toml --all-targets -- -D warnings
+          cargo +stable clippy --manifest-path scirust-gpu/Cargo.toml --all-targets -- -D warnings
+          cargo +stable clippy --manifest-path soullink-brain/soullink-cutlass/Cargo.toml --all-targets -- -D warnings
+          cargo +stable clippy --manifest-path soullink-brain/soullink-dali/Cargo.toml --all-targets -- -D warnings
+          cargo +stable clippy --manifest-path soullink-brain/soullink-onednn/Cargo.toml --all-targets -- -D warnings
 
   fmt:
     name: Format
@@ -118,7 +118,7 @@ jobs:
         with:
           toolchain: stable
           components: rustfmt
-      - run: cargo fmt --all -- --check
+      - run: cargo +stable fmt --all -- --check
 
   deny:
     name: cargo-deny
@@ -128,7 +128,45 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
-      - name: Advisories, bans, licenses, sources
+      # cargo-deny-action is a Docker action. Repository-scoped `soul`
+      # runners intentionally do not expose a Docker daemon, so use the exact
+      # cargo-deny release embedded by the pinned action on self-hosted Linux.
+      # Fork PRs remain on GitHub-hosted runners and retain the upstream action.
+      - name: Install native cargo-deny 0.20.2
+        if: ${{ runner.environment == 'self-hosted' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "$(uname -m)" in
+            aarch64|arm64)
+              triple="aarch64-unknown-linux-musl"
+              expected="995c82be0defc7a025cae49a2aa2644ce8245c9a3318fc4103907c6a285e8c7d"
+              ;;
+            x86_64|amd64)
+              triple="x86_64-unknown-linux-musl"
+              expected="9f12ed4c49936e09b48bf862b595cde2fe64fcbd9d74dfacac6131ca824c8d5f"
+              ;;
+            *)
+              echo "unsupported self-hosted architecture: $(uname -m)" >&2
+              exit 1
+              ;;
+          esac
+          archive="$RUNNER_TEMP/cargo-deny-0.20.2.tar.gz"
+          install_dir="$RUNNER_TEMP/cargo-deny-0.20.2"
+          curl --fail --location --retry 3 --silent --show-error \
+            "https://github.com/EmbarkStudios/cargo-deny/releases/download/0.20.2/cargo-deny-0.20.2-${triple}.tar.gz" \
+            --output "$archive"
+          echo "$expected  $archive" | sha256sum --check --strict
+          rm -rf "$install_dir"
+          mkdir -p "$install_dir"
+          tar -xzf "$archive" -C "$install_dir" --strip-components=1
+          "$install_dir/cargo-deny" --version
+          echo "$install_dir" >> "$GITHUB_PATH"
+      - name: Advisories, bans, licenses, sources (self-hosted)
+        if: ${{ runner.environment == 'self-hosted' }}
+        run: cargo-deny check --workspace
+      - name: Advisories, bans, licenses, sources (GitHub-hosted)
+        if: ${{ runner.environment == 'github-hosted' }}
         uses: EmbarkStudios/cargo-deny-action@3c6349835b2b7b196a839186cb8b78e02f7b5f25 # v2.1.1
         with:
           command: check
@@ -212,4 +250,4 @@ jobs:
         if: ${{ runner.environment == 'github-hosted' }}
         run: sudo apt-get update && sudo apt-get install -y libleptonica-dev libtesseract-dev
       - name: Check workspace against declared MSRV
-        run: cargo check --workspace --all-targets
+        run: cargo +1.93.0 check --workspace --all-targets
