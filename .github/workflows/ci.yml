@@ -163,6 +163,13 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
+      # cargo-deny shells out to `cargo metadata`; unlike the other Rust jobs,
+      # the native cargo-deny installer below does not install a Rust toolchain.
+      # Keep this explicit so a clean self-hosted runner cannot accidentally
+      # depend on operator PATH state.
+      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
+        with:
+          toolchain: stable
       # Use the same checksum-pinned native cargo-deny release on every Linux
       # runner. GitHub prepares Docker actions before evaluating a step-level
       # `if`, so merely conditioning cargo-deny-action still requires Docker on
