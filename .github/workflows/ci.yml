@@ -163,12 +163,11 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
-      # cargo-deny-action is a Docker action. Repository-scoped `soul`
-      # runners intentionally do not expose a Docker daemon, so use the exact
-      # cargo-deny release embedded by the pinned action on self-hosted Linux.
-      # Fork PRs remain on GitHub-hosted runners and retain the upstream action.
+      # Use the same checksum-pinned native cargo-deny release on every Linux
+      # runner. GitHub prepares Docker actions before evaluating a step-level
+      # `if`, so merely conditioning cargo-deny-action still requires Docker on
+      # the self-hosted `soul` runner, where the daemon is intentionally hidden.
       - name: Install native cargo-deny 0.20.2
-        if: ${{ runner.environment == 'self-hosted' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -197,15 +196,8 @@ jobs:
           tar -xzf "$archive" -C "$install_dir" --strip-components=1
           "$install_dir/cargo-deny" --version
           echo "$install_dir" >> "$GITHUB_PATH"
-      - name: Advisories, bans, licenses, sources (self-hosted)
-        if: ${{ runner.environment == 'self-hosted' }}
+      - name: Advisories, bans, licenses, sources
         run: cargo-deny --workspace check
-      - name: Advisories, bans, licenses, sources (GitHub-hosted)
-        if: ${{ runner.environment == 'github-hosted' }}
-        uses: EmbarkStudios/cargo-deny-action@3c6349835b2b7b196a839186cb8b78e02f7b5f25 # v2.1.1
-        with:
-          command: check
-          arguments: --workspace
 
   sbom:
     name: SBOM
