@@ -84,12 +84,7 @@ impl McpServer {
 
     pub async fn handle_value(&mut self, message: Value) -> Option<Value> {
         let Some(object) = message.as_object() else {
-            return Some(error_response(
-                Value::Null,
-                -32600,
-                "Invalid Request",
-                None,
-            ));
+            return Some(error_response(Value::Null, -32600, "Invalid Request", None));
         };
         let id = object.get("id").cloned();
         let is_notification = id.is_none();
@@ -264,13 +259,9 @@ impl McpServer {
         let base_revision = args
             .base_revision
             .unwrap_or_else(|| self.default_base_revision.clone());
-        let workspace = GitWorkspace::create(
-            &self.repo,
-            base_revision,
-            session_id,
-            self.policy.clone(),
-        )
-        .map_err(|error| error.to_string())?;
+        let workspace =
+            GitWorkspace::create(&self.repo, base_revision, session_id, self.policy.clone())
+                .map_err(|error| error.to_string())?;
         let mut record = SessionRecord::new(task, workspace.context().clone());
         self.store
             .save(&mut record)
