@@ -18,99 +18,206 @@ env:
 jobs:
   check:
     name: Check
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && 'ubuntu-latest' || 'soul' }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
       - name: Free disk space
+        if: ${{ runner.environment == 'github-hosted' }}
         run: |
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL 2>/dev/null || true
           sudo docker image prune -af 2>/dev/null || true
           sudo apt-get clean
           df -h /
-      - run: sudo apt-get update && sudo apt-get install -y libleptonica-dev libtesseract-dev
+      - name: Install OCR build dependencies on GitHub-hosted runners
+        if: ${{ runner.environment == 'github-hosted' }}
+        run: sudo apt-get update && sudo apt-get install -y libleptonica-dev libtesseract-dev
       - name: Check workspace (CPU-only)
-        run: cargo check --workspace --all-targets
+        run: cargo +stable check --workspace --all-targets
       - name: Check GPU/CUDA crates
         run: |
-          cargo check --manifest-path scirust-gpu/Cargo.toml --all-targets
-          cargo check --manifest-path soullink-brain/soullink-cutlass/Cargo.toml --all-targets
-          cargo check --manifest-path soullink-brain/soullink-dali/Cargo.toml --all-targets
-          cargo check --manifest-path soullink-brain/soullink-onednn/Cargo.toml --all-targets
+          cargo +stable check --manifest-path scirust-gpu/Cargo.toml --all-targets
+          cargo +stable check --manifest-path soullink-brain/soullink-cutlass/Cargo.toml --all-targets
+          cargo +stable check --manifest-path soullink-brain/soullink-dali/Cargo.toml --all-targets
+          cargo +stable check --manifest-path soullink-brain/soullink-onednn/Cargo.toml --all-targets
 
   test:
     name: Test
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && 'ubuntu-latest' || 'soul' }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - name: Free disk space
+        if: ${{ runner.environment == 'github-hosted' }}
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL 2>/dev/null || true
+          sudo docker image prune -af 2>/dev/null || true
+          sudo apt-get clean
+          df -h /
+      - name: Install OCR build dependencies on GitHub-hosted runners
+        if: ${{ runner.environment == 'github-hosted' }}
+        run: sudo apt-get update && sudo apt-get install -y libleptonica-dev libtesseract-dev
+      - name: Test workspace (CPU-only)
+        run: cargo +stable test --workspace --lib --exclude soulsystem --exclude soul-kernel
+      # GPUs may be missing on some runners — skip silently
+      - run: cargo +stable test -p soulsystem --tests -- --test-threads=2
+
+  linux-x86_64:
+    name: Linux x86_64 workspace
+    # Internal PRs move the primary workspace jobs onto the ARM64 `soul`
+    # runner. Keep a full x86_64 Linux qualification leg because the
+    # workspace contains architecture-specific SIMD and sandbox paths. Fork
+    # PRs already execute the primary jobs on GitHub-hosted x86_64 runners.
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
+        with:
+          toolchain: stable
+          components: clippy
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          key: linux-x86_64-workspace
       - name: Free disk space
         run: |
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL 2>/dev/null || true
           sudo docker image prune -af 2>/dev/null || true
           sudo apt-get clean
           df -h /
-      - run: sudo apt-get update && sudo apt-get install -y libleptonica-dev libtesseract-dev
-      - name: Test workspace (CPU-only)
-        run: cargo test --workspace --lib --exclude soulsystem --exclude soul-kernel
-      # GPUs may be missing on some runners — skip silently
-      - run: cargo test -p soulsystem --tests -- --test-threads=2
+      - name: Install OCR build dependencies
+        run: sudo apt-get update && sudo apt-get install -y libleptonica-dev libtesseract-dev
+      - name: Check x86_64 workspace
+        run: cargo +stable check --workspace --all-targets
+      - name: Test x86_64 workspace libraries
+        run: cargo +stable test --workspace --lib --exclude soulsystem --exclude soul-kernel
+      - name: Clippy x86_64 workspace
+        run: cargo +stable clippy --workspace --all-targets -- -D warnings
 
   clippy:
     name: Clippy
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && 'ubuntu-latest' || 'soul' }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
+        with:
+          toolchain: stable
           components: clippy
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
       - name: Free disk space
+        if: ${{ runner.environment == 'github-hosted' }}
         run: |
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL 2>/dev/null || true
           sudo docker image prune -af 2>/dev/null || true
           sudo apt-get clean
           df -h /
-      - run: sudo apt-get update && sudo apt-get install -y libleptonica-dev libtesseract-dev
+      - name: Install OCR build dependencies on GitHub-hosted runners
+        if: ${{ runner.environment == 'github-hosted' }}
+        run: sudo apt-get update && sudo apt-get install -y libleptonica-dev libtesseract-dev
       - name: Clippy workspace (CPU-only)
-        run: cargo clippy --workspace --all-targets -- -D warnings
+        run: cargo +stable clippy --workspace --all-targets -- -D warnings
       - name: Clippy GPU/CUDA crates
         run: |
-          cargo clippy --manifest-path scirust-gpu/Cargo.toml --all-targets -- -D warnings
-          cargo clippy --manifest-path soullink-brain/soullink-cutlass/Cargo.toml --all-targets -- -D warnings
-          cargo clippy --manifest-path soullink-brain/soullink-dali/Cargo.toml --all-targets -- -D warnings
-          cargo clippy --manifest-path soullink-brain/soullink-onednn/Cargo.toml --all-targets -- -D warnings
+          cargo +stable clippy --manifest-path scirust-gpu/Cargo.toml --all-targets -- -D warnings
+          cargo +stable clippy --manifest-path soullink-brain/soullink-cutlass/Cargo.toml --all-targets -- -D warnings
+          cargo +stable clippy --manifest-path soullink-brain/soullink-dali/Cargo.toml --all-targets -- -D warnings
+          cargo +stable clippy --manifest-path soullink-brain/soullink-onednn/Cargo.toml --all-targets -- -D warnings
 
   fmt:
     name: Format
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && 'ubuntu-latest' || 'soul' }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
+        with:
+          toolchain: stable
           components: rustfmt
-      - run: cargo fmt --all -- --check
+      - run: cargo +stable fmt --all -- --check
 
   deny:
     name: cargo-deny
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && 'ubuntu-latest' || 'soul' }}
     steps:
-      - uses: actions/checkout@v4
-      - name: Advisories, bans, licenses, sources
-        uses: EmbarkStudios/cargo-deny-action@v2
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          command: check
-          arguments: --workspace
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      # cargo-deny shells out to `cargo metadata`; unlike the other Rust jobs,
+      # the native cargo-deny installer below does not install a Rust toolchain.
+      # Keep this explicit so a clean self-hosted runner cannot accidentally
+      # depend on operator PATH state.
+      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
+        with:
+          toolchain: stable
+      # Use the same checksum-pinned native cargo-deny release on every Linux
+      # runner. GitHub prepares Docker actions before evaluating a step-level
+      # `if`, so merely conditioning cargo-deny-action still requires Docker on
+      # the self-hosted `soul` runner, where the daemon is intentionally hidden.
+      - name: Install native cargo-deny 0.20.2
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "$(uname -m)" in
+            aarch64|arm64)
+              triple="aarch64-unknown-linux-musl"
+              expected="995c82be0defc7a025cae49a2aa2644ce8245c9a3318fc4103907c6a285e8c7d"
+              ;;
+            x86_64|amd64)
+              triple="x86_64-unknown-linux-musl"
+              expected="9f12ed4c49936e09b48bf862b595cde2fe64fcbd9d74dfacac6131ca824c8d5f"
+              ;;
+            *)
+              echo "unsupported self-hosted architecture: $(uname -m)" >&2
+              exit 1
+              ;;
+          esac
+          archive="$RUNNER_TEMP/cargo-deny-0.20.2.tar.gz"
+          install_dir="$RUNNER_TEMP/cargo-deny-0.20.2"
+          curl --fail --location --retry 3 --silent --show-error \
+            "https://github.com/EmbarkStudios/cargo-deny/releases/download/0.20.2/cargo-deny-0.20.2-${triple}.tar.gz" \
+            --output "$archive"
+          echo "$expected  $archive" | sha256sum --check --strict
+          rm -rf "$install_dir"
+          mkdir -p "$install_dir"
+          tar -xzf "$archive" -C "$install_dir" --strip-components=1
+          "$install_dir/cargo-deny" --version
+          echo "$install_dir" >> "$GITHUB_PATH"
+      - name: Advisories, bans, licenses, sources
+        run: cargo-deny --workspace check
 
   sbom:
     name: SBOM
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && 'ubuntu-latest' || 'soul' }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
       # Generates a CycloneDX SBOM for the workspace. This is the inventory
       # `cargo deny` checks against: deny answers "is anything we depend on
       # known-bad today", the SBOM answers "what exactly did this build
@@ -146,7 +253,7 @@ jobs:
       # about one build, and a committed copy goes stale the moment a
       # dependency resolves differently.
       - name: Upload SBOM
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: sbom-cyclonedx
           path: sbom-out/
@@ -154,19 +261,27 @@ jobs:
 
   msrv:
     name: MSRV (1.93.0)
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && 'ubuntu-latest' || 'soul' }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@1.93.0
-      - uses: Swatinem/rust-cache@v2
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@283fb51ee3c8a49cd7c8ff30102f3fcf3cfbe0e1 # 1.93.0
+        with:
+          toolchain: 1.93.0
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
           key: msrv
       - name: Free disk space
+        if: ${{ runner.environment == 'github-hosted' }}
         run: |
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL 2>/dev/null || true
           sudo docker image prune -af 2>/dev/null || true
           sudo apt-get clean
           df -h /
-      - run: sudo apt-get update && sudo apt-get install -y libleptonica-dev libtesseract-dev
+      - name: Install OCR build dependencies on GitHub-hosted runners
+        if: ${{ runner.environment == 'github-hosted' }}
+        run: sudo apt-get update && sudo apt-get install -y libleptonica-dev libtesseract-dev
       - name: Check workspace against declared MSRV
-        run: cargo check --workspace --all-targets
+        run: cargo +1.93.0 check --workspace --all-targets
