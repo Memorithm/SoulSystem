@@ -18,10 +18,11 @@
 //   La correction correcte est async-channel (lock-free, fully async) :
 //   - API identique à tokio::mpsc (Sender/Receiver async)
 //   - Implémentation MPMC lock-free (concurrent::queue interne)
-//   - Mesuré : ~15–25% plus rapide que tokio::mpsc pour petits messages
-//     (le ×30% annoncé dans la review est optimiste et contexte-dépendant)
+//   - Les performances dépendent du runtime, de l'architecture, de la charge et
+//     de la capacité du canal; elles doivent être mesurées sur le système cible.
 //
-// BENCHMARK INCLUS : mesure la différence réelle sur cette machine.
+// BENCHMARK DIAGNOSTIQUE INCLUS : il rapporte les mesures sans les transformer
+// en gate de correction fonctionnelle.
 // =============================================================================
 
 use async_channel::{bounded, Receiver, Sender};
@@ -183,8 +184,9 @@ impl TelegramConsumer {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// BENCHMARK INTÉGRÉ : async-channel vs tokio::mpsc
-// Lance avec : cargo test --release -- --nocapture bench_channel
+// BENCHMARK DIAGNOSTIQUE : async-channel vs tokio::mpsc
+// Lance avec : cargo test --release -- --ignored --nocapture bench_channel
+// Les timings ne sont pas une assertion de correction et ne doivent pas bloquer CI.
 // ─────────────────────────────────────────────────────────────────────────────
 
 #[cfg(test)]
@@ -229,6 +231,7 @@ mod bench {
     }
 
     #[tokio::test]
+    #[ignore = "diagnostic microbenchmark; throughput is host and load dependent"]
     async fn bench_channel_comparison() {
         const N: usize = 100_000;
 
@@ -247,18 +250,11 @@ mod bench {
         println!("async-channel : {:.1} ns/msg", ac_ns);
         println!("tokio::mpsc   : {:.1} ns/msg", mpsc_ns);
         println!(
-            "Speedup       : {:.2}× (expected: 1.1–1.3×, NOT 1.3×)",
+            "Relative ratio: {:.2}× (tokio::mpsc / async-channel)",
             speedup
         );
         println!(
-            "NOTE: crossbeam::bounded serait ~{:.2}× mais BLOQUE en async",
-            speedup * 1.5
-        );
-
-        // Le gain est réel mais modéré (pas le ×30% annoncé systématiquement)
-        assert!(
-            speedup > 0.8,
-            "async-channel should not be slower than tokio::mpsc"
+            "Diagnostic only: no fixed performance threshold is valid across hosts or load states"
         );
     }
 }

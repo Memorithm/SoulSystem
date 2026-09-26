@@ -772,6 +772,38 @@ impl Sandbox {
         (exit_code, stdout, stderr, timed_out)
     }
 
+    /// Wait for the child while concurrently draining both output pipes.
+    ///
+    /// Waiting before reading can deadlock once either pipe reaches its kernel
+    /// capacity. Reader threads keep both pipes flowing while retaining only
+    /// the bounded prefix required by the policy.
+    fn wait_with_drained_output(
+        &self,
+        child: &mut std::process::Child,
+        pid: i32,
+    ) -> (Option<i32>, String, String, bool) {
+        let max_output_bytes = self.policy.max_output_bytes;
+        let stdout_reader = child.stdout.take().map(|reader| {
+            std::thread::spawn(move || read_capped_draining(reader, max_output_bytes))
+        });
+        let stderr_reader = child.stderr.take().map(|reader| {
+            std::thread::spawn(move || read_capped_draining(reader, max_output_bytes))
+        });
+
+        let (exit_code, _, wait_stderr, timed_out) = self.wait_with_timeout(child, pid);
+        let stdout = stdout_reader
+            .and_then(|reader| reader.join().ok())
+            .unwrap_or_default();
+        let mut stderr = stderr_reader
+            .and_then(|reader| reader.join().ok())
+            .unwrap_or_default();
+        if !wait_stderr.is_empty() {
+            stderr.push_str(&wait_stderr);
+        }
+
+        (exit_code, stdout, stderr, timed_out)
+    }
+
     /// Normalise une commande (utilitaire public).
     pub fn normalize(&self, cmd: &str) -> String {
         normalize(cmd)
@@ -877,7 +909,7 @@ impl Sandbox {
         let t0 = Instant::now();
 
         let (mut child, pid, _cgroup_leaf) = self.spawn_with_sandbox(&safe_cmd, Stdio::null())?;
-        let (exit_code, stdout, stderr, timed_out) = self.wait_with_timeout(&mut child, pid);
+        let (exit_code, stdout, stderr, timed_out) = self.wait_with_drained_output(&mut child, pid);
 
         let duration_ms = t0.elapsed().as_millis() as u64;
         let threats: Vec<String> = self
@@ -1040,7 +1072,7 @@ impl Sandbox {
             let _ = sin.write_all(stdin_payload.as_bytes());
         }
 
-        let (exit_code, stdout, stderr, timed_out) = self.wait_with_timeout(&mut child, pid);
+        let (exit_code, stdout, stderr, timed_out) = self.wait_with_drained_output(&mut child, pid);
 
         let duration_ms = t0.elapsed().as_millis() as u64;
         let threats: Vec<String> = self
@@ -1485,6 +1517,19 @@ mod tests {
             100,
             "stdout capture must be capped to policy.max_output_bytes regardless of how much the command writes"
         );
+    }
+
+    #[test]
+    fn output_larger_than_pipe_capacity_is_drained_without_timeout() {
+        let sb = Sandbox::new(SandboxPolicy {
+            max_output_bytes: 100,
+            ..Default::default()
+        });
+        let verdict = sb.execute("head -c 131072 /dev/zero").unwrap();
+
+        assert!(!verdict.timed_out);
+        assert_eq!(verdict.exit_code, Some(0));
+        assert_eq!(verdict.stdout.len(), 100);
     }
 
     #[test]

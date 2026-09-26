@@ -12,6 +12,8 @@ pub mod command;
 pub mod contract;
 pub mod feedback;
 pub mod git;
+pub mod interchange;
+pub mod mcp;
 pub mod runner;
 pub mod runtime;
 pub mod session;
@@ -27,6 +29,10 @@ pub use contract::{
 };
 pub use feedback::{CodingFeedback, FeedbackError, FeedbackKind, PreferenceScope};
 pub use git::{GitError, GitWorkspace};
+pub use interchange::{
+    CodingTaskEnvelopeV1, CodingTaskInterchangeError, InterchangeCheckV1,
+    CODING_TASK_INTERCHANGE_SCHEMA_V1,
+};
 pub use runner::{CommandOutput, CommandRunner, RunnerError, SandboxCommandRunner};
 pub use runtime::{CodingRuntime, RuntimeError};
 pub use session::{SessionError, SessionRecord, SessionStore, SESSION_SCHEMA_VERSION};
