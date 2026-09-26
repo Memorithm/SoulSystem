@@ -13,6 +13,7 @@ use serde_json::{json, Value};
 use soul_sandbox::SandboxPolicy;
 use soul_tools::PermissionLevel;
 use soullink_gate::ExecutionMode;
+use std::collections::HashSet;
 use std::io::{self, BufRead, Write};
 use std::path::{Path, PathBuf};
 use thiserror::Error;
@@ -247,11 +248,31 @@ impl McpServer {
         }
         let args: StartTaskArgs =
             serde_json::from_value(arguments).map_err(|error| error.to_string())?;
+        if args
+            .session_id
+            .as_deref()
+            .is_some_and(|value| value.trim().is_empty())
+        {
+            return Err("session_id cannot be empty".to_string());
+        }
+        if args
+            .base_revision
+            .as_deref()
+            .is_some_and(|value| value.trim().is_empty())
+        {
+            return Err("base_revision cannot be empty".to_string());
+        }
         let checks = args
             .checks
             .into_iter()
             .map(McpCheckSpec::into_check_spec)
             .collect::<Result<Vec<_>, _>>()?;
+        let mut check_names = HashSet::with_capacity(checks.len());
+        for check in &checks {
+            if !check_names.insert(check.name.clone()) {
+                return Err(format!("duplicate acceptance-check name: {}", check.name));
+            }
+        }
         let task = TaskSpec::new(args.prompt, checks).map_err(|error| error.to_string())?;
         let session_id = args
             .session_id
@@ -280,6 +301,9 @@ impl McpServer {
         }
         let args: ResumeTaskArgs =
             serde_json::from_value(arguments).map_err(|error| error.to_string())?;
+        if args.session_id.trim().is_empty() {
+            return Err("session_id cannot be empty".to_string());
+        }
         let record = self
             .store
             .load(&args.session_id)
@@ -671,6 +695,22 @@ mod tests {
             "untrusted_override": true
         }));
         assert!(resume.is_err());
+    }
+
+    #[test]
+    fn start_task_rejects_duplicate_check_names() {
+        let mut server = server();
+        let error = server
+            .start_task(json!({
+                "prompt": "fix the parser",
+                "checks": [
+                    {"name": "unit", "command": "cargo test"},
+                    {"name": "unit", "command": "cargo test -p parser"}
+                ]
+            }))
+            .unwrap_err();
+
+        assert!(error.contains("duplicate acceptance-check name: unit"));
     }
 
     #[test]
