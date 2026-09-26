@@ -5,7 +5,7 @@
 //! a second, less constrained path to the filesystem or command runner.
 
 use crate::{
-    coding_tool_schemas, CheckSpec, CodingRuntime, CodingToolExecutor, GitWorkspace,
+    coding_tool_schemas, CheckSpec, CodingRuntime, CodingToolExecutor, CommandSpec, GitWorkspace,
     SandboxCommandRunner, SessionRecord, SessionStore, TaskSpec,
 };
 use serde::Deserialize;
@@ -522,8 +522,10 @@ struct McpCheckSpec {
 
 impl McpCheckSpec {
     fn into_check_spec(self) -> Result<CheckSpec, String> {
-        CheckSpec::new(self.name, self.command, self.required, self.timeout_secs)
-            .map_err(|error| error.to_string())
+        let check = CheckSpec::new(self.name, self.command, self.required, self.timeout_secs)
+            .map_err(|error| error.to_string())?;
+        CommandSpec::parse(&check.command).map_err(|error| error.to_string())?;
+        Ok(check)
     }
 }
 
@@ -669,6 +671,19 @@ mod tests {
             "untrusted_override": true
         }));
         assert!(resume.is_err());
+    }
+
+    #[test]
+    fn acceptance_checks_reject_shell_syntax_at_mcp_ingress() {
+        let check = serde_json::from_value::<McpCheckSpec>(json!({
+            "name": "unit",
+            "command": "cargo test && echo unexpected",
+            "required": true,
+            "timeout_secs": 300
+        }))
+        .unwrap();
+
+        assert!(check.into_check_spec().is_err());
     }
 
     #[tokio::test]
