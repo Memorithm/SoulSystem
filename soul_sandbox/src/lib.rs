@@ -909,8 +909,7 @@ impl Sandbox {
         let t0 = Instant::now();
 
         let (mut child, pid, _cgroup_leaf) = self.spawn_with_sandbox(&safe_cmd, Stdio::null())?;
-        let (exit_code, stdout, stderr, timed_out) =
-            self.wait_with_drained_output(&mut child, pid);
+        let (exit_code, stdout, stderr, timed_out) = self.wait_with_drained_output(&mut child, pid);
 
         let duration_ms = t0.elapsed().as_millis() as u64;
         let threats: Vec<String> = self
@@ -1073,8 +1072,7 @@ impl Sandbox {
             let _ = sin.write_all(stdin_payload.as_bytes());
         }
 
-        let (exit_code, stdout, stderr, timed_out) =
-            self.wait_with_drained_output(&mut child, pid);
+        let (exit_code, stdout, stderr, timed_out) = self.wait_with_drained_output(&mut child, pid);
 
         let duration_ms = t0.elapsed().as_millis() as u64;
         let threats: Vec<String> = self
