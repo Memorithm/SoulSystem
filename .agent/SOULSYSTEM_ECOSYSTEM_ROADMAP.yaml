@@ -1,7 +1,7 @@
 schema_version: 1
 kind: soulsystem_ecosystem_agent_roadmap
 status: active
-last_updated: "2026-08-31"
+last_updated: "2026-09-26"
 repository: Memorithm/SoulSystem
 intended_consumer: autonomous_coding_agent
 merge_policy: never_merge_this_file_to_default_branch_unless_user_explicitly_requests
@@ -221,7 +221,7 @@ agent_operating_protocol:
     diagnosis is allowed.
 coordination_records:
   - id: SOUL_MCP_INTEROP_2026_09_26
-    status: candidate_blocked_ci
+    status: candidate_blocked_hosted_ci
     pull_request: https://github.com/Memorithm/SoulSystem/pull/188
     candidate_head_sha: 5d5fce8d16a5486b5e991b12636ee9386e81def6
     base_sha: 9c1e8f6b5997f7414ebf2be9313ee54901073f4c
@@ -233,9 +233,9 @@ coordination_records:
       - MCP_runtime_remains_NOT_READY_for_untrusted_network_production
     exact_head_evidence:
       review: no_remaining_material_P1_or_P2_in_corrected_delta
-      self_hosted_ci: pending
-      benchmarks: pending
-      hosted_platforms: startup_failure_before_steps
+      self_hosted_ci: pass_7_of_7_on_exact_head
+      benchmarks: pass_on_exact_head
+      hosted_platforms: fail_5_of_5_before_steps_after_targeted_rerun
     merge_authorized: false
     publication_authorized: false
     note: >-
