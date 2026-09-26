@@ -493,6 +493,7 @@ fn not_initialized(id: Value) -> Value {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct StartTaskArgs {
     prompt: String,
     checks: Vec<McpCheckSpec>,
@@ -503,11 +504,13 @@ struct StartTaskArgs {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct ResumeTaskArgs {
     session_id: String,
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct McpCheckSpec {
     name: String,
     command: String,
@@ -640,6 +643,32 @@ mod tests {
         assert!(names.contains(&"write_file"));
         assert!(names.contains(&"patch_file"));
         assert!(names.contains(&"execute_shell"));
+    }
+
+    #[test]
+    fn start_task_arguments_reject_unknown_fields_at_runtime() {
+        let top_level = serde_json::from_value::<StartTaskArgs>(json!({
+            "prompt": "fix the parser",
+            "checks": [{"name": "unit", "command": "cargo test"}],
+            "untrusted_override": true
+        }));
+        assert!(top_level.is_err());
+
+        let nested = serde_json::from_value::<StartTaskArgs>(json!({
+            "prompt": "fix the parser",
+            "checks": [{
+                "name": "unit",
+                "command": "cargo test",
+                "untrusted_override": true
+            }]
+        }));
+        assert!(nested.is_err());
+
+        let resume = serde_json::from_value::<ResumeTaskArgs>(json!({
+            "session_id": "session-1",
+            "untrusted_override": true
+        }));
+        assert!(resume.is_err());
     }
 
     #[tokio::test]
