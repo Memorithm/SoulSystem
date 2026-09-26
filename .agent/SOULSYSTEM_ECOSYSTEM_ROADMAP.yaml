@@ -219,3 +219,25 @@ agent_operating_protocol:
     If this roadmap cannot be read, do not make major coding-harness, security,
     session-format, cross-repository integration, or merge decisions. Read-only
     diagnosis is allowed.
+coordination_records:
+  - id: SOUL_MCP_INTEROP_2026_09_26
+    status: candidate_blocked_ci
+    pull_request: https://github.com/Memorithm/SoulSystem/pull/188
+    candidate_head_sha: 5d5fce8d16a5486b5e991b12636ee9386e81def6
+    base_sha: 9c1e8f6b5997f7414ebf2be9313ee54901073f4c
+    candidate_contract:
+      - MCP_stdio_reuses_canonical_worktree_session_tool_and_verification_paths
+      - MCP_start_resume_and_check_arguments_reject_unknown_fields
+      - MCP_acceptance_commands_are_shell_free_at_ingress
+      - MCP_rejects_empty_caller_supplied_identity_fields_and_duplicate_check_names
+      - MCP_runtime_remains_NOT_READY_for_untrusted_network_production
+    exact_head_evidence:
+      review: no_remaining_material_P1_or_P2_in_corrected_delta
+      self_hosted_ci: pending
+      benchmarks: pending
+      hosted_platforms: startup_failure_before_steps
+    merge_authorized: false
+    publication_authorized: false
+    note: >-
+      Candidate evidence only. Do not treat this contract as delivered until
+      PR 188 is merged after every applicable gate is green on this exact head.
