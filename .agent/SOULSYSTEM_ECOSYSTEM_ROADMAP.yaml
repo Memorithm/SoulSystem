@@ -241,3 +241,23 @@ coordination_records:
     note: >-
       Candidate evidence only. Do not treat this contract as delivered until
       PR 188 is merged after every applicable gate is green on this exact head.
+
+
+ax_agent_task_program:
+  source_review_date: "2026-09-27"
+  external_reference: google_ax_architecture_only
+  role: task_scoped_agent_consumer
+  objective: >-
+    Run agent work and delegated child work inside explicit task identities,
+    exact workspaces, least-privilege capabilities and bounded execution
+    envelopes rather than ambient host authority.
+  phases:
+    - AXSO1_map_agent_runs_to_Hub_TaskSpec
+    - AXSO2_define_parent_child_task_lineage_and_capability_subset_rules
+    - AXSO3_require_explicit_network_and_tool_grants
+    - AXSO4_bind_model_tool_workspace_and_result_provenance
+    - AXSO5_checkpoint_resume_only_with_side_effect_reconciliation
+  invariants:
+    - child_tasks_never_receive_more_authority_than_the_parent_without_explicit_admission
+    - shared_MCP_transport_does_not_imply_shared_authority
+    - CCOS_memory_context_does_not_authorize_external_effects
