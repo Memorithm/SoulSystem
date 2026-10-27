@@ -85,7 +85,7 @@ jobs:
 
   fmt:
     name: Format
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64, memorithm-ci, dell-general, ci-light, trusted-main]
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
