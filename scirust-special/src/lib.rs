@@ -41,6 +41,9 @@
 use std::f64::consts::PI;
 
 /// Euler–Mascheroni constant γ.
+// Rust 1.93 does not expose EULER_GAMMA in std::f64::consts.
+// Keep the canonical f64 approximation; scope the lint exemption to this constant.
+#[allow(clippy::approx_constant)]
 pub const EULER_MASCHERONI: f64 = 0.577_215_664_901_532_9;
 
 // Maximum iterations for the series / continued-fraction expansions. Reaching
@@ -845,7 +848,7 @@ mod tests {
         let s = 1.000_001;
         assert!(close(
             riemann_zeta(s),
-            1.0 / (s - 1.0) + 0.577_215_664_901_532_9,
+            1.0 / (s - 1.0) + EULER_MASCHERONI,
             1e-9
         ));
     }

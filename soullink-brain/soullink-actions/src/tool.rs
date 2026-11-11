@@ -49,6 +49,10 @@ impl ToolResult {
 }
 
 /// The AsyncTool trait — every tool implements validate + execute.
+// async_trait emits #[must_use] on the generated Future, whose Result output
+// already carries #[must_use]. This is a macro expansion false positive in
+// Clippy 1.99 (double_must_use), not an ignored Result at a call site.
+#[allow(clippy::double_must_use)]
 #[async_trait::async_trait]
 pub trait AsyncTool: Send + Sync {
     /// Name of the tool.

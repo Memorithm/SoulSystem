@@ -6,6 +6,12 @@ on:
   pull_request:
     branches: [main, master]
 
+# Cancel superseded PR CI after a new actual source revision is pushed.
+# This avoids wasting self-hosted ARM64 time on stale SHA jobs.
+concurrency:
+  group: soulsystem-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 env:
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: 0
@@ -18,18 +24,20 @@ env:
 jobs:
   check:
     name: Check
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event_name == 'pull_request' && github.actor == 'CHECKUPAUTO' && github.event.pull_request.head.repo.full_name == github.repository && 'soul' || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - name: Free disk space
+        if: ${{ github.event_name != 'pull_request' || github.actor != 'CHECKUPAUTO' || github.event.pull_request.head.repo.full_name != github.repository }}
         run: |
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL 2>/dev/null || true
           sudo docker image prune -af 2>/dev/null || true
           sudo apt-get clean
           df -h /
-      - run: sudo apt-get update && sudo apt-get install -y libleptonica-dev libtesseract-dev
+      - if: ${{ github.event_name != 'pull_request' || github.actor != 'CHECKUPAUTO' || github.event.pull_request.head.repo.full_name != github.repository }}
+        run: sudo apt-get update && sudo apt-get install -y libleptonica-dev libtesseract-dev
       - name: Check workspace (CPU-only)
         run: cargo check --workspace --all-targets
       - name: Check GPU/CUDA crates
@@ -41,18 +49,20 @@ jobs:
 
   test:
     name: Test
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event_name == 'pull_request' && github.actor == 'CHECKUPAUTO' && github.event.pull_request.head.repo.full_name == github.repository && 'soul' || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - name: Free disk space
+        if: ${{ github.event_name != 'pull_request' || github.actor != 'CHECKUPAUTO' || github.event.pull_request.head.repo.full_name != github.repository }}
         run: |
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL 2>/dev/null || true
           sudo docker image prune -af 2>/dev/null || true
           sudo apt-get clean
           df -h /
-      - run: sudo apt-get update && sudo apt-get install -y libleptonica-dev libtesseract-dev
+      - if: ${{ github.event_name != 'pull_request' || github.actor != 'CHECKUPAUTO' || github.event.pull_request.head.repo.full_name != github.repository }}
+        run: sudo apt-get update && sudo apt-get install -y libleptonica-dev libtesseract-dev
       - name: Test workspace (CPU-only)
         run: cargo test --workspace --lib --exclude soulsystem --exclude soul-kernel
       # GPUs may be missing on some runners — skip silently
@@ -60,7 +70,7 @@ jobs:
 
   clippy:
     name: Clippy
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event_name == 'pull_request' && github.actor == 'CHECKUPAUTO' && github.event.pull_request.head.repo.full_name == github.repository && 'soul' || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -68,12 +78,14 @@ jobs:
           components: clippy
       - uses: Swatinem/rust-cache@v2
       - name: Free disk space
+        if: ${{ github.event_name != 'pull_request' || github.actor != 'CHECKUPAUTO' || github.event.pull_request.head.repo.full_name != github.repository }}
         run: |
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL 2>/dev/null || true
           sudo docker image prune -af 2>/dev/null || true
           sudo apt-get clean
           df -h /
-      - run: sudo apt-get update && sudo apt-get install -y libleptonica-dev libtesseract-dev
+      - if: ${{ github.event_name != 'pull_request' || github.actor != 'CHECKUPAUTO' || github.event.pull_request.head.repo.full_name != github.repository }}
+        run: sudo apt-get update && sudo apt-get install -y libleptonica-dev libtesseract-dev
       - name: Clippy workspace (CPU-only)
         run: cargo clippy --workspace --all-targets -- -D warnings
       - name: Clippy GPU/CUDA crates
@@ -85,7 +97,7 @@ jobs:
 
   fmt:
     name: Format
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && 'ubuntu-latest' || 'soul' }}
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -95,18 +107,31 @@ jobs:
 
   deny:
     name: cargo-deny
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event_name == 'pull_request' && github.actor == 'CHECKUPAUTO' && github.event.pull_request.head.repo.full_name == github.repository && 'soul' || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v4
+      # cargo-deny-action@v2 is a Docker action and cannot start on the
+      # dedicated SoulSystem ARM64 runner (no Docker daemon). Use an identical
+      # native cargo-deny executable on hosted and self-hosted jobs.
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install pinned cargo-deny in isolated job-local tools directory
+        shell: bash
+        run: |
+          set -euo pipefail
+          tool_dir="${RUNNER_TEMP}/cargo-deny-0.20.2"
+          if [ ! -x "$tool_dir/bin/cargo-deny" ]; then
+            cargo install --locked cargo-deny --version 0.20.2 --root "$tool_dir"
+          fi
+          "$tool_dir/bin/cargo-deny" --version
       - name: Advisories, bans, licenses, sources
-        uses: EmbarkStudios/cargo-deny-action@v2
-        with:
-          command: check
-          arguments: --workspace
+        shell: bash
+        run: |
+          set -euo pipefail
+          "${RUNNER_TEMP}/cargo-deny-0.20.2/bin/cargo-deny" check --workspace
 
   sbom:
     name: SBOM
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event_name == 'pull_request' && github.actor == 'CHECKUPAUTO' && github.event.pull_request.head.repo.full_name == github.repository && 'soul' || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -154,7 +179,7 @@ jobs:
 
   msrv:
     name: MSRV (1.93.0)
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event_name == 'pull_request' && github.actor == 'CHECKUPAUTO' && github.event.pull_request.head.repo.full_name == github.repository && 'soul' || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@1.93.0
@@ -162,11 +187,13 @@ jobs:
         with:
           key: msrv
       - name: Free disk space
+        if: ${{ github.event_name != 'pull_request' || github.actor != 'CHECKUPAUTO' || github.event.pull_request.head.repo.full_name != github.repository }}
         run: |
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL 2>/dev/null || true
           sudo docker image prune -af 2>/dev/null || true
           sudo apt-get clean
           df -h /
-      - run: sudo apt-get update && sudo apt-get install -y libleptonica-dev libtesseract-dev
+      - if: ${{ github.event_name != 'pull_request' || github.actor != 'CHECKUPAUTO' || github.event.pull_request.head.repo.full_name != github.repository }}
+        run: sudo apt-get update && sudo apt-get install -y libleptonica-dev libtesseract-dev
       - name: Check workspace against declared MSRV
         run: cargo check --workspace --all-targets
