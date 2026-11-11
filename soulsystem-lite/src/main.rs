@@ -761,11 +761,12 @@ async fn main() -> anyhow::Result<()> {
         .route("/octa/stats", get(octa_stats))
         .route("/octa/feedback", post(octa_feedback))
         .route("/octa/ping", get(octa_ping))
-        .merge(ollama_chat::router()?)
         // INV-NET-4: fail closed. The `/octa/*` and `/ccos/*` routes read
         // and write memory state.
         .layer(soul_cors::CorsPolicy::from_env(CORS_ALLOWLIST_VAR).read_write_layer())
-        .with_state(state.clone());
+        .with_state(state.clone())
+        // axum Router<()> can be merged only after applying AppState above.
+        .merge(ollama_chat::router()?);
 
     // WS endpoint on :9022
     let ws_app = Router::new()
