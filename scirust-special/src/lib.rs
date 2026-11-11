@@ -41,7 +41,7 @@
 use std::f64::consts::PI;
 
 /// Euler–Mascheroni constant γ.
-pub const EULER_MASCHERONI: f64 = 0.577_215_664_901_532_9;
+pub const EULER_MASCHERONI: f64 = std::f64::consts::EULER_GAMMA;
 
 // Maximum iterations for the series / continued-fraction expansions. Reaching
 // this bound means the argument is outside the well-converging domain; the
