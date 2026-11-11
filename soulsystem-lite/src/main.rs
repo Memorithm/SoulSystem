@@ -767,7 +767,7 @@ async fn main() -> anyhow::Result<()> {
     bridge
         .start()
         .await
-        .context("CERVO start")?;
+        .map_err(|error| anyhow::anyhow!("CERVO start: {error}"))?;
     tracing::info!("CERVO bridge initialized");
 
     let state = AppState {
