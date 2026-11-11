@@ -2,7 +2,7 @@
 //!
 //! The local Ollama server owns model scheduling, context sizing, decoding,
 //! concurrency, and retention. Clients can choose the Ollama model and native
-//! options at each request. No forced 160-token, 2K-context, eight-thread or
+//! options at each request. Ornith 9B is the default, with no forced 160-token, 2K-context, eight-thread or
 //! keep_alive=0 policy: omitted options use Ollama/model defaults.
 //!
 //! Security, not model policy: an explicit host-local bearer credential is
@@ -22,6 +22,7 @@ use std::time::Duration;
 
 const TOKEN_ENV: &str = "SOULSYSTEM_LITE_CHAT_TOKEN";
 const MODEL_ENV: &str = "SOULSYSTEM_LITE_OLLAMA_MODEL";
+const DEFAULT_MODEL: &str = "ornith:9b";
 const TIMEOUT_ENV: &str = "SOULSYSTEM_LITE_OLLAMA_TIMEOUT_SECS";
 const BODY_LIMIT_ENV: &str = "SOULSYSTEM_LITE_CHAT_MAX_BODY_BYTES";
 const OLLAMA_CHAT_ENDPOINT: &str = "http://127.0.0.1:11434/api/chat";
@@ -129,7 +130,8 @@ fn configured_router() -> anyhow::Result<Option<(ChatState, usize)>> {
     if token.trim().len() < 32 {
         anyhow::bail!("SoulSystem Lite chat requires a strong host-local bearer token");
     }
-    let default_model = std::env::var(MODEL_ENV).ok().filter(|x| !x.trim().is_empty());
+    let default_model = std::env::var(MODEL_ENV).ok().filter(|x| !x.trim().is_empty())
+        .or_else(|| Some(DEFAULT_MODEL.to_owned()));
     let timeout = std::env::var(TIMEOUT_ENV)
         .ok().and_then(|v| v.parse::<u64>().ok())
         .unwrap_or(600);
@@ -258,7 +260,7 @@ mod tests {
     fn sample_state() -> ChatState {
         ChatState {
             auth: TokenAuth::from_pairs([("test", "a".repeat(40))]),
-            default_model: Some("gemma4:e2b".into()),
+            default_model: Some(DEFAULT_MODEL.into()),
             client: reqwest::Client::new(),
         }
     }
@@ -288,7 +290,7 @@ mod tests {
         let value = build_payload(&sample_state(), json!({
             "messages": [{"role": "user", "content": "bonjour"}]
         }).as_object().unwrap().clone()).unwrap();
-        assert_eq!(value["model"], "gemma4:e2b");
+        assert_eq!(value["model"], DEFAULT_MODEL);
         assert_eq!(value["stream"], false);
         assert!(value.get("keep_alive").is_none());
         assert!(value.get("options").is_none());
