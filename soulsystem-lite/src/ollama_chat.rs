@@ -94,7 +94,9 @@ fn validate_messages(value: &Value) -> bool {
 }
 
 fn authorization(state: &ChatState, headers: &HeaderMap) -> Result<(), ApiError> {
-    let supplied = headers.get(header::AUTHORIZATION).and_then(|v| v.to_str().ok());
+    let supplied = headers
+        .get(header::AUTHORIZATION)
+        .and_then(|v| v.to_str().ok());
     if state.auth.authenticate_header(supplied).is_some() {
         Ok(())
     } else {
@@ -130,13 +132,17 @@ fn configured_router() -> anyhow::Result<Option<(ChatState, usize)>> {
     if token.trim().len() < 32 {
         anyhow::bail!("SoulSystem Lite chat requires a strong host-local bearer token");
     }
-    let default_model = std::env::var(MODEL_ENV).ok().filter(|x| !x.trim().is_empty())
+    let default_model = std::env::var(MODEL_ENV)
+        .ok()
+        .filter(|x| !x.trim().is_empty())
         .or_else(|| Some(DEFAULT_MODEL.to_owned()));
     let timeout = std::env::var(TIMEOUT_ENV)
-        .ok().and_then(|v| v.parse::<u64>().ok())
+        .ok()
+        .and_then(|v| v.parse::<u64>().ok())
         .unwrap_or(600);
     let body_limit = std::env::var(BODY_LIMIT_ENV)
-        .ok().and_then(|v| v.parse::<usize>().ok())
+        .ok()
+        .and_then(|v| v.parse::<usize>().ok())
         .filter(|v| *v > 0)
         .unwrap_or(32 * 1024 * 1024);
     let mut builder = reqwest::Client::builder()
@@ -171,7 +177,8 @@ pub fn router() -> anyhow::Result<Router> {
 }
 
 async fn call_ollama(state: &ChatState, payload: &Value) -> Result<reqwest::Response, ApiError> {
-    let response = state.client
+    let response = state
+        .client
         .post(OLLAMA_CHAT_ENDPOINT)
         .json(payload)
         .send()
@@ -214,18 +221,28 @@ async fn ask(
     }
     let payload = build_payload(&state, input)?;
     let response = call_ollama(&state, &payload).await?;
-    let data: Value = response.json().await
+    let data: Value = response
+        .json()
+        .await
         .map_err(|_| err(StatusCode::BAD_GATEWAY, "ollama_invalid_response"))?;
-    let answer = data.pointer("/message/content")
-        .and_then(Value::as_str).unwrap_or("");
+    let answer = data
+        .pointer("/message/content")
+        .and_then(Value::as_str)
+        .unwrap_or("");
     if answer.is_empty() {
         return Err(err(StatusCode::BAD_GATEWAY, "ollama_empty_answer"));
     }
     Ok(Json(AskResponse {
         response: answer.to_owned(),
-        model: data.get("model").and_then(Value::as_str)
-            .unwrap_or_default().to_owned(),
-        prompt_tokens: data.get("prompt_eval_count").and_then(Value::as_u64).unwrap_or(0),
+        model: data
+            .get("model")
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+            .to_owned(),
+        prompt_tokens: data
+            .get("prompt_eval_count")
+            .and_then(Value::as_u64)
+            .unwrap_or(0),
         completion_tokens: data.get("eval_count").and_then(Value::as_u64).unwrap_or(0),
     }))
 }
@@ -236,19 +253,27 @@ async fn chat(
     Json(body): Json<Value>,
 ) -> Result<Response, ApiError> {
     authorization(&state, &headers)?;
-    let input = body.as_object().cloned()
+    let input = body
+        .as_object()
+        .cloned()
         .ok_or_else(|| err(StatusCode::BAD_REQUEST, "invalid_chat_body"))?;
     let payload = build_payload(&state, input)?;
-    let streaming = payload.get("stream").and_then(Value::as_bool).unwrap_or(false);
+    let streaming = payload
+        .get("stream")
+        .and_then(Value::as_bool)
+        .unwrap_or(false);
     let response = call_ollama(&state, &payload).await?;
     if streaming {
         // Preserve native Ollama NDJSON streaming without buffering tokens.
         return Ok((
             [(header::CONTENT_TYPE, "application/x-ndjson")],
             Body::from_stream(response.bytes_stream()),
-        ).into_response());
+        )
+            .into_response());
     }
-    let answer: Value = response.json().await
+    let answer: Value = response
+        .json()
+        .await
         .map_err(|_| err(StatusCode::BAD_GATEWAY, "ollama_invalid_response"))?;
     Ok(Json(answer).into_response())
 }
@@ -268,28 +293,45 @@ mod tests {
     #[test]
     fn model_override_and_native_options_are_preserved() {
         let state = sample_state();
-        let value = build_payload(&state, json!({
-            "model": "hf.co/InternScience/Agents-A1-Q4_K_M-GGUF:Q4_K_M",
-            "messages": [{"role":"user","content":"bonjour"}],
-            "options": {"num_ctx": 131072, "num_predict": -1, "num_thread": 32},
-            "keep_alive": "1h",
-            "think": true,
-            "stream": true
-        }).as_object().unwrap().clone()).unwrap();
+        let value = build_payload(
+            &state,
+            json!({
+                "model": "hf.co/InternScience/Agents-A1-Q4_K_M-GGUF:Q4_K_M",
+                "messages": [{"role":"user","content":"bonjour"}],
+                "options": {"num_ctx": 131072, "num_predict": -1, "num_thread": 32},
+                "keep_alive": "1h",
+                "think": true,
+                "stream": true
+            })
+            .as_object()
+            .unwrap()
+            .clone(),
+        )
+        .unwrap();
         assert_eq!(value["options"]["num_ctx"], 131072);
         assert_eq!(value["options"]["num_predict"], -1);
         assert_eq!(value["options"]["num_thread"], 32);
         assert_eq!(value["keep_alive"], "1h");
         assert_eq!(value["stream"], true);
         assert_eq!(value["think"], true);
-        assert_eq!(value["model"], "hf.co/InternScience/Agents-A1-Q4_K_M-GGUF:Q4_K_M");
+        assert_eq!(
+            value["model"],
+            "hf.co/InternScience/Agents-A1-Q4_K_M-GGUF:Q4_K_M"
+        );
     }
 
     #[test]
     fn default_model_has_no_forced_inference_limits() {
-        let value = build_payload(&sample_state(), json!({
-            "messages": [{"role": "user", "content": "bonjour"}]
-        }).as_object().unwrap().clone()).unwrap();
+        let value = build_payload(
+            &sample_state(),
+            json!({
+                "messages": [{"role": "user", "content": "bonjour"}]
+            })
+            .as_object()
+            .unwrap()
+            .clone(),
+        )
+        .unwrap();
         assert_eq!(value["model"], DEFAULT_MODEL);
         assert_eq!(value["stream"], false);
         assert!(value.get("keep_alive").is_none());
@@ -300,11 +342,18 @@ mod tests {
     fn rejects_only_malformed_requests() {
         let state = sample_state();
         assert!(build_payload(&state, Map::new()).is_err());
-        assert!(build_payload(&state, json!({"messages": []})
-            .as_object().unwrap().clone()).is_err());
-        assert!(build_payload(&state, json!({"model": 10,
+        assert!(
+            build_payload(&state, json!({"messages": []}).as_object().unwrap().clone()).is_err()
+        );
+        assert!(build_payload(
+            &state,
+            json!({"model": 10,
             "messages": [{"role":"user","content":"test"}]})
-            .as_object().unwrap().clone()).is_err());
+            .as_object()
+            .unwrap()
+            .clone()
+        )
+        .is_err());
         assert!(state.auth.authenticate_header(None).is_none());
     }
 }
