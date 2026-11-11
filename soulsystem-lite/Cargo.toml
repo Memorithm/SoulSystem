@@ -7,6 +7,8 @@ license.workspace = true
 
 [dependencies]
 soul-cors = { workspace = true }
+soul-auth = { workspace = true }
+reqwest = { workspace = true, features = ["json"] }
 soul-bridge = { path = "../soul-bridge" }
 cervo = { path = "../cervo" }
 serde = { workspace = true }

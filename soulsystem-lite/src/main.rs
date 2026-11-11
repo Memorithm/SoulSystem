@@ -1,3 +1,7 @@
+mod ollama_chat;
+
+use anyhow::Context;
+
 use axum::{
     extract::State,
     routing::{get, post},
@@ -13,6 +17,39 @@ use tokio::sync::RwLock;
 /// (INV-NET-4). Each service names its own variable: they deploy
 /// separately and have no reason to share an origin list.
 const CORS_ALLOWLIST_VAR: &str = "SOULSYSTEM_LITE_CORS_ORIGINS";
+
+const REST_BIND_ENV: &str = "SOULSYSTEM_LITE_REST_BIND";
+const WS_BIND_ENV: &str = "SOULSYSTEM_LITE_WS_BIND";
+
+fn parse_loopback_bind(value: &str) -> anyhow::Result<std::net::SocketAddr> {
+    let address: std::net::SocketAddr = value
+        .parse()
+        .context("invalid SoulSystem Lite bind address")?;
+    anyhow::ensure!(
+        address.ip().is_loopback(),
+        "SoulSystem Lite API must remain loopback-only"
+    );
+    Ok(address)
+}
+
+fn local_bind(env: &str, default_port: u16) -> anyhow::Result<std::net::SocketAddr> {
+    let value = std::env::var(env).unwrap_or_else(|_| format!("127.0.0.1:{default_port}"));
+    parse_loopback_bind(&value)
+}
+
+#[cfg(test)]
+mod bind_tests {
+    use super::*;
+
+    #[test]
+    fn accepts_only_local_addresses() {
+        assert!(parse_loopback_bind("127.0.0.1:19023").is_ok());
+        assert!(parse_loopback_bind("[::1]:19022").is_ok());
+        assert!(parse_loopback_bind("0.0.0.0:9023").is_err());
+        assert!(parse_loopback_bind("192.168.0.1:9023").is_err());
+        assert!(parse_loopback_bind("invalid").is_err());
+    }
+}
 
 #[derive(Clone)]
 struct AppState {
@@ -715,14 +752,12 @@ async fn main() -> anyhow::Result<()> {
 
     tracing::info!("Starting SoulSystem-lite gateway...");
 
-    let ccos = soul_bridge::ccos::init()
-        .await
-        .map_err(|e| anyhow::anyhow!("CCOS init: {e}"))?;
+    let ccos = soul_bridge::ccos::init().await.context("CCOS init")?;
     tracing::info!("CCOS bridge initialized");
 
     let octa = soul_bridge::octasoma::init()
         .await
-        .map_err(|e| anyhow::anyhow!("OctaSoma init: {e}"))?;
+        .context("OctaSoma init")?;
     tracing::info!("OctaSoma bridge initialized");
 
     let config = cervo::config::CervoConfig::default();
@@ -730,7 +765,7 @@ async fn main() -> anyhow::Result<()> {
     bridge
         .start()
         .await
-        .map_err(|e| anyhow::anyhow!("CERVO start: {e}"))?;
+        .map_err(|error| anyhow::anyhow!("CERVO start: {error}"))?;
     tracing::info!("CERVO bridge initialized");
 
     let state = AppState {
@@ -762,18 +797,22 @@ async fn main() -> anyhow::Result<()> {
         // INV-NET-4: fail closed. The `/octa/*` and `/ccos/*` routes read
         // and write memory state.
         .layer(soul_cors::CorsPolicy::from_env(CORS_ALLOWLIST_VAR).read_write_layer())
-        .with_state(state.clone());
+        .with_state(state.clone())
+        // axum Router<()> can be merged only after applying AppState above.
+        .merge(ollama_chat::router()?);
 
     // WS endpoint on :9022
     let ws_app = Router::new()
         .route("/ws", get(ws_handler))
         .with_state(state);
 
-    let rest_listener = tokio::net::TcpListener::bind("127.0.0.1:9023").await?;
-    let ws_listener = tokio::net::TcpListener::bind("127.0.0.1:9022").await?;
+    let rest_bind = local_bind(REST_BIND_ENV, 9023)?;
+    let ws_bind = local_bind(WS_BIND_ENV, 9022)?;
+    let rest_listener = tokio::net::TcpListener::bind(rest_bind).await?;
+    let ws_listener = tokio::net::TcpListener::bind(ws_bind).await?;
 
-    tracing::info!("REST API listening on :9023");
-    tracing::info!("WebSocket listening on :9022");
+    tracing::info!(address = %rest_bind, "SoulSystem Lite REST API listening");
+    tracing::info!(address = %ws_bind, "SoulSystem Lite WebSocket listening");
 
     tokio::select! {
         r = axum::serve(rest_listener, rest_app) => r?,
