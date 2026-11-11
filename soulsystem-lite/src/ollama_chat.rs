@@ -75,6 +75,7 @@ fn chat_from_env() -> anyhow::Result<Option<ChatState>> {
     }
     let client = reqwest::Client::builder()
         .no_proxy()
+        .redirect(reqwest::redirect::Policy::none())
         .connect_timeout(Duration::from_secs(3))
         .timeout(Duration::from_secs(90))
         .build()?;
