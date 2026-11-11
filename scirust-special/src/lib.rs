@@ -848,7 +848,7 @@ mod tests {
         let s = 1.000_001;
         assert!(close(
             riemann_zeta(s),
-            1.0 / (s - 1.0) + 0.577_215_664_901_532_9,
+            1.0 / (s - 1.0) + EULER_MASCHERONI,
             1e-9
         ));
     }
