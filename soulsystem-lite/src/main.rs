@@ -1,5 +1,7 @@
 mod ollama_chat;
 
+use anyhow::Context;
+
 use axum::{
     extract::State,
     routing::{get, post},
@@ -719,12 +721,12 @@ async fn main() -> anyhow::Result<()> {
 
     let ccos = soul_bridge::ccos::init()
         .await
-        .map_err(|e| anyhow::anyhow!("CCOS init: {e}"))?;
+        .context("CCOS init")?;
     tracing::info!("CCOS bridge initialized");
 
     let octa = soul_bridge::octasoma::init()
         .await
-        .map_err(|e| anyhow::anyhow!("OctaSoma init: {e}"))?;
+        .context("OctaSoma init")?;
     tracing::info!("OctaSoma bridge initialized");
 
     let config = cervo::config::CervoConfig::default();
@@ -732,7 +734,7 @@ async fn main() -> anyhow::Result<()> {
     bridge
         .start()
         .await
-        .map_err(|e| anyhow::anyhow!("CERVO start: {e}"))?;
+        .context("CERVO start")?;
     tracing::info!("CERVO bridge initialized");
 
     let state = AppState {
