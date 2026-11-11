@@ -104,11 +104,24 @@ jobs:
     runs-on: ${{ github.event_name == 'pull_request' && github.actor == 'CHECKUPAUTO' && github.event.pull_request.head.repo.full_name == github.repository && 'soul' || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v4
+      # cargo-deny-action@v2 is a Docker action and cannot start on the
+      # dedicated SoulSystem ARM64 runner (no Docker daemon). Use an identical
+      # native cargo-deny executable on hosted and self-hosted jobs.
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install pinned cargo-deny in isolated job-local tools directory
+        shell: bash
+        run: |
+          set -euo pipefail
+          tool_dir="${RUNNER_TEMP}/cargo-deny-0.20.2"
+          if [ ! -x "$tool_dir/bin/cargo-deny" ]; then
+            cargo install --locked cargo-deny --version 0.20.2 --root "$tool_dir"
+          fi
+          "$tool_dir/bin/cargo-deny" --version
       - name: Advisories, bans, licenses, sources
-        uses: EmbarkStudios/cargo-deny-action@v2
-        with:
-          command: check
-          arguments: --workspace
+        shell: bash
+        run: |
+          set -euo pipefail
+          "${RUNNER_TEMP}/cargo-deny-0.20.2/bin/cargo-deny" check --workspace
 
   sbom:
     name: SBOM
