@@ -22,7 +22,9 @@ const REST_BIND_ENV: &str = "SOULSYSTEM_LITE_REST_BIND";
 const WS_BIND_ENV: &str = "SOULSYSTEM_LITE_WS_BIND";
 
 fn parse_loopback_bind(value: &str) -> anyhow::Result<std::net::SocketAddr> {
-    let address: std::net::SocketAddr = value.parse().context("invalid SoulSystem Lite bind address")?;
+    let address: std::net::SocketAddr = value
+        .parse()
+        .context("invalid SoulSystem Lite bind address")?;
     anyhow::ensure!(
         address.ip().is_loopback(),
         "SoulSystem Lite API must remain loopback-only"
@@ -31,8 +33,7 @@ fn parse_loopback_bind(value: &str) -> anyhow::Result<std::net::SocketAddr> {
 }
 
 fn local_bind(env: &str, default_port: u16) -> anyhow::Result<std::net::SocketAddr> {
-    let value = std::env::var(env)
-        .unwrap_or_else(|_| format!("127.0.0.1:{default_port}"));
+    let value = std::env::var(env).unwrap_or_else(|_| format!("127.0.0.1:{default_port}"));
     parse_loopback_bind(&value)
 }
 
@@ -49,7 +50,6 @@ mod bind_tests {
         assert!(parse_loopback_bind("invalid").is_err());
     }
 }
-
 
 #[derive(Clone)]
 struct AppState {
@@ -752,9 +752,7 @@ async fn main() -> anyhow::Result<()> {
 
     tracing::info!("Starting SoulSystem-lite gateway...");
 
-    let ccos = soul_bridge::ccos::init()
-        .await
-        .context("CCOS init")?;
+    let ccos = soul_bridge::ccos::init().await.context("CCOS init")?;
     tracing::info!("CCOS bridge initialized");
 
     let octa = soul_bridge::octasoma::init()
