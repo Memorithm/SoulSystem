@@ -41,7 +41,10 @@
 use std::f64::consts::PI;
 
 /// Euler–Mascheroni constant γ.
-pub const EULER_MASCHERONI: f64 = std::f64::consts::EULER_GAMMA;
+// Rust 1.93 does not expose EULER_GAMMA in std::f64::consts.
+// Keep the canonical f64 approximation; scope the lint exemption to this constant.
+#[allow(clippy::approx_constant)]
+pub const EULER_MASCHERONI: f64 = 0.577_215_664_901_532_9;
 
 // Maximum iterations for the series / continued-fraction expansions. Reaching
 // this bound means the argument is outside the well-converging domain; the
