@@ -6,6 +6,12 @@ on:
   pull_request:
     branches: [main, master]
 
+# Cancel superseded PR CI after a new actual source revision is pushed.
+# This avoids wasting self-hosted ARM64 time on stale SHA jobs.
+concurrency:
+  group: soulsystem-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 env:
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: 0
