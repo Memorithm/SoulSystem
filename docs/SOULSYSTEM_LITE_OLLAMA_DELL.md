@@ -83,3 +83,34 @@ This route attaches Ollama inference to **SoulSystem Lite**, the actual
 installed service. It does **not** automatically turn that lightweight
 service into the complete SoulSystem autonomous coding agent; it does
 not yet provide automatic retrieval from the CCOS/OctaSoma bridges.
+
+## Physical Dell shadow qualification — 2026-11-11
+
+The exact source revision `3e44db9f7ca7ecf8ae3709e0ac71519fc17afe68`
+was compiled and exercised on Dell in the isolated RemoteOps shadow run
+[43102588785](https://github.com/Memorithm/RemoteOps/actions/runs/43102588785).
+The test used REST `127.0.0.1:19023`, WS `127.0.0.1:19022`,
+a temporary state directory, a host-local bearer, and local Ollama
+`ornith:9b`. All three bridges were healthy, unauthenticated chat
+was denied and a real French text response was obtained (HTTP 200).
+The original supervised `127.0.0.1:9023` service was still healthy
+after the test. A successful shadow is not, by itself, proof that the
+production service has been upgraded.
+
+**Critical production dependency:** the older Dell binary
+`/root/SoulSystem/ccos/target/release/ccos` exits with
+`ccos: unknown command 'mcp'`. The current SoulSystem bridge **requires**
+`ccos mcp`. Build `cargo build --locked --release -p ccos --features llm`
+from the same pinned SoulSystem revision and set an absolute `CCOS_CMD`
+only for the new supervised service. Likewise, build the
+`octasoma-mcp` CPU-only binary from
+`Memorithm/octasoma@713f78ec4503fab4465a5491f7399370ac727d24`
+using `cargo build --locked --release --features mcp`, and set
+`OCTASOMA_CMD` to its immutable, versioned absolute path.
+
+Do not move the main `soulsystem-lite` executable away from its
+existing `/root/SoulSystem/target/release` path without an equivalent
+verified bridge-resolution strategy. Preserve original CCOS/OctaSoma
+state and the original binary across rollback. The in-place upgrade
+must verify existing clients are quiescent and must not restart Ollama,
+Hermes, OmniClaw, or unrelated agents.
