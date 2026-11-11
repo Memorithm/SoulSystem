@@ -1,0 +1,53 @@
+name: Repair SoulSystem PR 189 locked dependency advisories
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/repair-189-lockfile.yml'
+permissions:
+  contents: write
+jobs:
+  update-locked-dependencies:
+    if: github.actor == 'CHECKUPAUTO' && github.event.pull_request.number == 189 && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'ci/remoteops-failover-ff0ec7f2ed051c5'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Exact same-repo branch checkout (no fork)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Refresh compatible vulnerable dependencies in Cargo.lock
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha }}"
+          test "$(git status --porcelain | wc -l)" = 0
+          echo "LOCK_REFRESH_EXACT_HEAD=$(git rev-parse HEAD)"
+          # Only metadata resolution. Cargo update executes no repository build scripts.
+          # Prefer compatible patched releases and preserve Cargo.toml requirements.
+          crates=(actix-http actix-web actix-files libsqlite3-sys libz-sys rustix rustls rustls-webpki tokio webpki-roots zstd zstd-safe zstd-sys async-executor chacha20 clipboard-win)
+          for crate in "${crates[@]}"; do
+            echo "LOCK_REFRESH_ATTEMPT=$crate"
+            if cargo update -p "$crate" > /tmp/cargo-lock-refresh.log 2>&1; then
+              echo "LOCK_REFRESH_OK=$crate"
+            else
+              echo "LOCK_REFRESH_BLOCKED=$crate"
+              tail -n 10 /tmp/cargo-lock-refresh.log | cut -c 1-240
+            fi
+          done
+          if git diff --quiet -- Cargo.lock; then
+            echo "LOCK_REFRESH_NO_COMPATIBLE_UPDATES"
+            exit 0
+          fi
+          # Ensure the lockfile remains parsable and no manifest changes occurred.
+          cargo metadata --locked --no-deps --format-version 1 > /dev/null
+          test -z "$(git diff --name-only -- . ':!Cargo.lock')"
+          echo "LOCK_REFRESH_MODIFIED_PACKAGES"
+          git diff --stat -- Cargo.lock
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Cargo.lock
+          git commit -m "security(deps): update compatible RustSec-affected transitive crates"
+          git push origin HEAD:refs/heads/ci/remoteops-failover-ff0ec7f2ed051c5
+          echo "LOCK_REFRESH_COMMIT_PUSHED"
