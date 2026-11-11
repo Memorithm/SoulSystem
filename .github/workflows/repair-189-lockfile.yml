@@ -26,7 +26,7 @@ jobs:
           echo "LOCK_REFRESH_EXACT_HEAD=$(git rev-parse HEAD)"
           # Only metadata resolution. Cargo update executes no repository build scripts.
           # Prefer compatible patched releases and preserve Cargo.toml requirements.
-          crates=(actix-http actix-web actix-files libsqlite3-sys libz-sys rustix rustls rustls-webpki tokio webpki-roots zstd zstd-safe zstd-sys async-executor chacha20 clipboard-win)
+          crates=(actix-http actix-web actix-files libsqlite3-sys libz-sys rustix@1.1.4 rustls rustls-webpki tokio webpki-roots@1.0.8 zstd zstd-safe zstd-sys async-executor chacha20 clipboard-win)
           for crate in "${crates[@]}"; do
             echo "LOCK_REFRESH_ATTEMPT=$crate"
             if cargo update -p "$crate" > /tmp/cargo-lock-refresh.log 2>&1; then
