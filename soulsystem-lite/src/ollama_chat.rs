@@ -59,7 +59,7 @@ struct AskResponse {
     completion_tokens: u64,
 }
 
-#[derive(Serialize)]
+#[derive(Debug, Serialize)]
 struct ErrorResponse {
     error: &'static str,
 }
