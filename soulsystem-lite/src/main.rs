@@ -18,6 +18,39 @@ use tokio::sync::RwLock;
 /// separately and have no reason to share an origin list.
 const CORS_ALLOWLIST_VAR: &str = "SOULSYSTEM_LITE_CORS_ORIGINS";
 
+const REST_BIND_ENV: &str = "SOULSYSTEM_LITE_REST_BIND";
+const WS_BIND_ENV: &str = "SOULSYSTEM_LITE_WS_BIND";
+
+fn parse_loopback_bind(value: &str) -> anyhow::Result<std::net::SocketAddr> {
+    let address: std::net::SocketAddr = value.parse().context("invalid SoulSystem Lite bind address")?;
+    anyhow::ensure!(
+        address.ip().is_loopback(),
+        "SoulSystem Lite API must remain loopback-only"
+    );
+    Ok(address)
+}
+
+fn local_bind(env: &str, default_port: u16) -> anyhow::Result<std::net::SocketAddr> {
+    let value = std::env::var(env)
+        .unwrap_or_else(|_| format!("127.0.0.1:{default_port}"));
+    parse_loopback_bind(&value)
+}
+
+#[cfg(test)]
+mod bind_tests {
+    use super::*;
+
+    #[test]
+    fn accepts_only_local_addresses() {
+        assert!(parse_loopback_bind("127.0.0.1:19023").is_ok());
+        assert!(parse_loopback_bind("[::1]:19022").is_ok());
+        assert!(parse_loopback_bind("0.0.0.0:9023").is_err());
+        assert!(parse_loopback_bind("192.168.0.1:9023").is_err());
+        assert!(parse_loopback_bind("invalid").is_err());
+    }
+}
+
+
 #[derive(Clone)]
 struct AppState {
     cervo: Arc<RwLock<Option<soul_bridge::cervo::CervoBridge>>>,
@@ -775,11 +808,13 @@ async fn main() -> anyhow::Result<()> {
         .route("/ws", get(ws_handler))
         .with_state(state);
 
-    let rest_listener = tokio::net::TcpListener::bind("127.0.0.1:9023").await?;
-    let ws_listener = tokio::net::TcpListener::bind("127.0.0.1:9022").await?;
+    let rest_bind = local_bind(REST_BIND_ENV, 9023)?;
+    let ws_bind = local_bind(WS_BIND_ENV, 9022)?;
+    let rest_listener = tokio::net::TcpListener::bind(rest_bind).await?;
+    let ws_listener = tokio::net::TcpListener::bind(ws_bind).await?;
 
-    tracing::info!("REST API listening on :9023");
-    tracing::info!("WebSocket listening on :9022");
+    tracing::info!(address = %rest_bind, "SoulSystem Lite REST API listening");
+    tracing::info!(address = %ws_bind, "SoulSystem Lite WebSocket listening");
 
     tokio::select! {
         r = axum::serve(rest_listener, rest_app) => r?,
