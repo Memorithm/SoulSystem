@@ -21,7 +21,7 @@ jobs:
       matrix:
         include:
           - name: Linux ARM64
-            os: ubuntu-24.04-arm
+            os: [self-hosted, Linux, ARM64, private]
             target: aarch64-unknown-linux-gnu
           - name: macOS Intel
             os: macos-15-intel

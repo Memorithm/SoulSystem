@@ -23,10 +23,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
+          - os: [self-hosted, Linux, X64, remoteops, ci-isolated]
             target: x86_64-unknown-linux-gnu
             archive: tar
-          - os: ubuntu-24.04-arm
+          - os: [self-hosted, Linux, ARM64, private]
             target: aarch64-unknown-linux-gnu
             archive: tar
           - os: macos-15-intel
