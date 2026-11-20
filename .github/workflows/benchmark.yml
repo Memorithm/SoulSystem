@@ -19,7 +19,9 @@ jobs:
       - name: Install benchmark dependencies
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq --no-install-recommends linux-tools-common linux-tools-generic
+          # Debian (Memorithm VMs) ships perf as linux-perf; Ubuntu as linux-tools-*.
+          if grep -qi ubuntu /etc/os-release; then pkgs="linux-tools-common linux-tools-generic"; else pkgs="linux-perf"; fi
+          sudo apt-get install -y -qq --no-install-recommends $pkgs
 
       - name: Run benchmarks
         run: |
