@@ -146,7 +146,7 @@ jobs:
   # identity is what ties the inventory to the build that produced it.
   sbom:
     name: SBOM
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64, remoteops, ci-isolated]
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
