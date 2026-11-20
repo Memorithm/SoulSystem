@@ -23,10 +23,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
+          - os: [self-hosted, Linux, X64, remoteops, ci-isolated]
             target: x86_64-unknown-linux-gnu
             archive: tar
-          - os: ubuntu-24.04-arm
+          - os: [self-hosted, Linux, ARM64, private]
             target: aarch64-unknown-linux-gnu
             archive: tar
           - os: macos-15-intel
@@ -146,7 +146,7 @@ jobs:
   # identity is what ties the inventory to the build that produced it.
   sbom:
     name: SBOM
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64, remoteops, ci-isolated]
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable

@@ -6,9 +6,15 @@ on:
   pull_request:
     branches: [main]
 
+concurrency:
+  # Superseded pull request runs are cancelled (shared self-hosted VMs);
+  # push, schedule and dispatch runs get a unique group and are never cancelled.
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   benchmark:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64, remoteops, ci-isolated]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -19,7 +25,9 @@ jobs:
       - name: Install benchmark dependencies
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq --no-install-recommends linux-tools-common linux-tools-generic
+          # Debian (Memorithm VMs) ships perf as linux-perf; Ubuntu as linux-tools-*.
+          if grep -qi ubuntu /etc/os-release; then pkgs="linux-tools-common linux-tools-generic"; else pkgs="linux-perf"; fi
+          sudo apt-get install -y -qq --no-install-recommends $pkgs
 
       - name: Run benchmarks
         run: |
